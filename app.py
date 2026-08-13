@@ -234,7 +234,7 @@ with tab_entry:
         f_col1, f_col2 = st.columns(2)
         with f_col1:
             or_no = st.text_input("Official Receipt (OR NO.)", placeholder="e.g. 2239")
-            payment_method = st.selectbox("Payment Method", ["CASH", "ONLINE TRANSFER", "QR PAYMENT", "CHEQUE"])
+            payment_method = st.selectbox("Payment Method", ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"])
         with f_col2:
             start_m = st.selectbox("Coverage Start Month", MONTHS, format_func=lambda x: x.strftime("%b %Y"))
             end_m = st.selectbox("Coverage End Month", MONTHS, format_func=lambda x: x.strftime("%b %Y"), index=0)
@@ -261,11 +261,16 @@ with tab_entry:
 # --- TAB 2: MONTHLY COLLECTION EXPORT ---
 with tab_monthly:
     st.header("Monthly Collection Logs")
-    m_col1, m_col2 = st.columns(2)
+    
+    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     with m_col1:
         selected_month_num = st.selectbox("Select Month", list(range(1, 13)), format_func=lambda x: datetime(2024, x, 1).strftime("%B"))
     with m_col2:
         selected_year = st.number_input("Select Year", min_value=2023, max_value=2030, value=2024)
+    with m_col3:
+        sort_by_m = st.selectbox("Sort By", ["Collection Date", "Receipt Number (OR NO.)", "Unit ID", "Block"])
+    with m_col4:
+        sort_order_m = st.selectbox("Order", ["Ascending (A-Z / Oldest First)", "Descending (Z-A / Newest First)"])
 
     m_start_str = f"{selected_year}-{selected_month_num:02d}-01"
     next_m = datetime(selected_year, selected_month_num, 1) + relativedelta(months=1)
@@ -278,10 +283,27 @@ with tab_monthly:
     else:
         st.write(f"Found **{len(records)}** payment logs.")
         df_logs = pd.DataFrame(records)[["created_at", "or_no", "unit_id", "collector_name", "payment_method", "amount_paid", "start_month", "end_month"]]
-        st.dataframe(df_logs, use_container_width=True)
         
+        # Add Block column for sorting
+        df_logs["Block"] = df_logs["unit_id"].apply(lambda x: x.split("-")[0] if "-" in str(x) else "")
+        
+        # Mapping sort selections to columns
+        sort_map = {
+            "Collection Date": "created_at",
+            "Receipt Number (OR NO.)": "or_no",
+            "Unit ID": "unit_id",
+            "Block": "Block"
+        }
+        
+        is_asc = True if "Ascending" in sort_order_m else False
+        df_logs = df_logs.sort_values(by=sort_map[sort_by_m], ascending=is_asc)
+        
+        st.dataframe(df_logs.drop(columns=["Block"]), use_container_width=True)
+        
+        # Pass sorted records to Excel generator
+        sorted_records = df_logs.to_dict("records")
         m_name = datetime(2024, selected_month_num, 1).strftime("%B")
-        excel_file = generate_monthly_excel(records, m_name, selected_year)
+        excel_file = generate_monthly_excel(sorted_records, m_name, selected_year)
         
         st.download_button(
             label=f"📥 Download {m_name} {selected_year} Collection Log (.xlsx)",
@@ -293,9 +315,16 @@ with tab_monthly:
 # --- TAB 3: ANNUAL SUMMARY EXPORT ---
 with tab_annual:
     st.header("Annual Payment Matrix")
-    ann_year = st.number_input("Select Annual Year Scope", min_value=2023, max_value=2030, value=2024, key="annual_year")
     
-    all_units = supabase.table("units").select("unit_id").order("unit_id").execute().data
+    a_col1, a_col2, a_col3 = st.columns(3)
+    with a_col1:
+        ann_year = st.number_input("Select Annual Year Scope", min_value=2023, max_value=2030, value=2024, key="annual_year")
+    with a_col2:
+        sort_by_a = st.selectbox("Sort By", ["Unit ID", "Block", "Floor Level"])
+    with a_col3:
+        sort_order_a = st.selectbox("Order", ["Ascending (A-Z / Lowest First)", "Descending (Z-A / Highest First)"], key="ann_order")
+    
+    all_units = supabase.table("units").select("unit_id", "block", "floor_level").execute().data
     all_payments = supabase.table("payments").select("*").execute().data
     
     payment_map = {}
@@ -313,7 +342,11 @@ with tab_annual:
     matrix_data = []
     for u_obj in all_units:
         u_id = u_obj["unit_id"]
-        row = {"Unit ID": u_id}
+        row = {
+            "Unit ID": u_id,
+            "Block": u_obj["block"],
+            "Floor": u_obj["floor_level"]
+        }
         u_paid = payment_map.get(u_id, set())
         for m_date in months_list:
             m_str = m_date.strftime("%Y-%m")
@@ -321,9 +354,21 @@ with tab_annual:
         matrix_data.append(row)
         
     df_matrix = pd.DataFrame(matrix_data)
-    st.dataframe(df_matrix, use_container_width=True, height=400)
     
-    ann_excel = generate_annual_excel(df_matrix, ann_year)
+    # Sort Matrix Data
+    is_asc_a = True if "Ascending" in sort_order_a else False
+    if sort_by_a == "Block":
+        df_matrix = df_matrix.sort_values(by=["Block", "Unit ID"], ascending=[is_asc_a, True])
+    elif sort_by_a == "Floor Level":
+        df_matrix = df_matrix.sort_values(by=["Floor", "Unit ID"], ascending=[is_asc_a, True])
+    else:
+        df_matrix = df_matrix.sort_values(by="Unit ID", ascending=is_asc_a)
+        
+    # Drop helper sorting columns before displaying and exporting
+    df_display = df_matrix.drop(columns=["Block", "Floor"])
+    st.dataframe(df_display, use_container_width=True, height=400)
+    
+    ann_excel = generate_annual_excel(df_display, ann_year)
     st.download_button(
         label=f"📥 Download Full {ann_year} Annual Summary (.xlsx)",
         data=ann_excel,
