@@ -234,7 +234,7 @@ with tab_entry:
         f_col1, f_col2 = st.columns(2)
         with f_col1:
             or_no = st.text_input("Official Receipt (OR NO.)", placeholder="e.g. 2239")
-            payment_method = st.selectbox("Payment Method", ["CASH", "TT (Online)", "CHEQUE"])
+            payment_method = st.selectbox("Payment Method", ["CASH", "ONLINE TRANSFER", "QR PAYMENT", "CHEQUE"])
         with f_col2:
             start_m = st.selectbox("Coverage Start Month", MONTHS, format_func=lambda x: x.strftime("%b %Y"))
             end_m = st.selectbox("Coverage End Month", MONTHS, format_func=lambda x: x.strftime("%b %Y"), index=0)
