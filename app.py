@@ -16,7 +16,7 @@ SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="Neighbourhood Maintenance Portal", layout="wide")
-st.title("Sunway Sinar Maintenance Fee Management System")
+st.title("🏘️ Neighbourhood Maintenance Fee Management System")
 
 # Define payment year scope
 SELECTED_YEAR = 2024
@@ -48,8 +48,8 @@ def generate_monthly_excel(records, month_name, year):
     ws = wb.active
     ws.title = f"{month_name} {year} Log"
 
-    # Header Title
-    ws.merge_cells("A1:G1")
+    # Header Title Banner (Merged A1:I1)
+    ws.merge_cells("A1:I1")
     title_cell = ws["A1"]
     title_cell.value = f"NEIGHBOURHOOD MAINTENANCE FEE COLLECTION - {month_name.upper()} {year}"
     title_cell.font = Font(name="Arial", size=12, bold=True, color="FFFFFF")
@@ -107,7 +107,7 @@ def generate_monthly_excel(records, month_name, year):
             else:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Add Summary Total
+    # Add Summary Total Row
     tot_row = len(records) + 4
     ws.cell(row=tot_row, column=6, value="TOTAL COLLECTED:").font = Font(name="Arial", size=10, bold=True)
     ws.cell(row=tot_row, column=6).alignment = Alignment(horizontal="right", vertical="center")
