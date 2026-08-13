@@ -16,7 +16,7 @@ SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="Neighbourhood Maintenance Portal", layout="wide")
-st.title("🏘️ Neighbourhood Maintenance Fee Management System")
+st.title("Sunway Sinar Maintenance Fee Management System")
 
 # Define payment year scope
 SELECTED_YEAR = 2024
