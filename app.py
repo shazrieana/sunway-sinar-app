@@ -55,35 +55,57 @@ def get_unit_payments(unit_id):
     return response.data
 
 def calculate_monthly_balances(records, target_year):
-    # Initialize dictionary mapping each month key to its total collected amount
-    monthly_totals = {f"{target_year}-{m:02d}": 0.0 for m in range(1, 13)}
+    # If no records exist, return zeros for all 12 months
+    if not records:
+        return {f"{target_year}-{m:02d}": 0.0 for m in range(1, 13)}
+
+    # Sort payment records chronologically by creation date
+    sorted_recs = sorted(records, key=lambda x: (x.get("created_at", ""), x.get("start_month", "")))
     
-    # Iterate through each payment record
-    for rec in records:
-        # Parse coverage start month
+    # Pool all raw monthly payments across the entire timeline
+    monthly_pool = {}
+    for rec in sorted_recs:
         curr = datetime.strptime(rec["start_month"], "%Y-%m-%d")
-        # Parse coverage end month
         end = datetime.strptime(rec["end_month"], "%Y-%m-%d")
-        # Parse numeric payment amount
-        amount = float(rec["amount_paid"])
+        amt = float(rec["amount_paid"])
         
-        # Calculate span of months covered by this payment
         span_months = (end.year - curr.year) * 12 + (end.month - curr.month) + 1
-        # Allocate amount evenly per covered month
-        allocated_per_month = amount / max(span_months, 1)
+        allocated = amt / max(span_months, 1)
         
-        # Distribute allocation across months in range
         while curr <= end:
-            # Build YYYY-MM key
             m_key = curr.strftime("%Y-%m")
-            # Accumulate amount if within scope year
-            if m_key in monthly_totals:
-                monthly_totals[m_key] += allocated_per_month
-            # Advance to next month
+            monthly_pool[m_key] = monthly_pool.get(m_key, 0.0) + allocated
             curr += relativedelta(months=1)
             
-    # Return accumulated dictionary
-    return monthly_totals
+    # Sequential Waterfall / Rollover allocation across chronological months
+    sorted_all_months = sorted(list(monthly_pool.keys()))
+    start_dt = datetime.strptime(sorted_all_months[0], "%Y-%m")
+    min_year = min(start_dt.year, target_year)
+    max_year = max(datetime.strptime(sorted_all_months[-1], "%Y-%m").year, target_year)
+    
+    cur_dt = datetime(min_year, 1, 1)
+    end_dt = datetime(max_year, 12, 1)
+    
+    waterfall_balances = {}
+    carry_forward = 0.0
+    
+    # Traverse every month sequentially and roll forward surplus
+    while cur_dt <= end_dt:
+        m_key = cur_dt.strftime("%Y-%m")
+        direct_amt = monthly_pool.get(m_key, 0.0)
+        total_available = direct_amt + carry_forward
+        
+        if total_available >= MONTHLY_FEE:
+            waterfall_balances[m_key] = MONTHLY_FEE
+            carry_forward = total_available - MONTHLY_FEE
+        else:
+            waterfall_balances[m_key] = total_available
+            carry_forward = 0.0
+            
+        cur_dt += relativedelta(months=1)
+        
+    # Extract calculated values for the target year
+    return {f"{target_year}-{m:02d}": waterfall_balances.get(f"{target_year}-{m:02d}", 0.0) for m in range(1, 13)}
 
 def generate_monthly_excel(records, month_name, year):
     # Initialize openpyxl workbook
@@ -324,11 +346,11 @@ with tab_status:
     if s_unit:
         # Retrieve all payment records for selected unit
         unit_records = get_unit_payments(s_unit)
-        # Calculate monthly totals for the selected view year
+        # Calculate monthly totals for the selected view year with waterfall roll-forward
         monthly_balances = calculate_monthly_balances(unit_records, s_view_year)
         
         # Calculate Total Paid and Outstanding
-        total_paid_unit = sum(min(val, MONTHLY_FEE) for val in monthly_balances.values())
+        total_paid_unit = sum(monthly_balances.values())
         total_outstanding_unit = max(0.0, ANNUAL_EXPECTED_FEE - total_paid_unit)
         
         st.subheader(f"Unit Status: {s_unit} (Calendar Year {s_view_year})")
@@ -562,12 +584,12 @@ with tab_annual:
         for m_date in months_list:
             m_str = m_date.strftime("%Y-%m")
             bal = u_balances.get(m_str, 0.0)
-            unit_total_paid += min(bal, MONTHLY_FEE)
+            unit_total_paid += bal
             
             if bal >= MONTHLY_FEE:
                 row[m_date.strftime("%b")] = "PAID"
             elif bal > 0.0:
-                row[m_date.strftime("%b")] = f"PARTIAL (RM{bal:.0f})"
+                row[m_date.strftime("%b")] = f"PARTIAL (RM{bal:.2f})"
             else:
                 row[m_date.strftime("%b")] = "UNPAID"
                 
@@ -619,3 +641,4 @@ with tab_annual:
         file_name=f"Maintenance_Fee_Summary_{ann_year}_{filter_label}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
