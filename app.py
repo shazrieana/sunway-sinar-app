@@ -37,10 +37,13 @@ MONTHLY_FEE = 35.00
 # Define annual total expected fee (12 * 35.00 = 420.00)
 ANNUAL_EXPECTED_FEE = 12 * MONTHLY_FEE
 
-# Generate a wide range of selectable months for multi-year operations (2023 to 2035)
-ALL_SELECTABLE_MONTHS = [
-    datetime(y, m, 1) for y in range(2023, 2036) for m in range(1, 13)
+# Standard Month Names List (1 to 12)
+MONTH_NAMES = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
 ]
+# Multi-year options range
+YEAR_OPTIONS = list(range(2023, 2036))
 
 # ==========================================
 # 2. HELPER CALCULATION & EXPORT FUNCTIONS
@@ -313,10 +316,10 @@ with tab_entry:
     st.markdown("---")
     
     if selected_unit:
-        # Allow committee member to choose which year to view the unit's status
+        # Selector for the year scope shown in the status overview
         v_col1, v_col2 = st.columns([1, 3])
         with v_col1:
-            view_year = st.number_input("View Year Scope", min_value=2023, max_value=2035, value=2024, key="entry_view_year")
+            view_year = st.selectbox("View Year Scope", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="entry_view_year")
         
         # Retrieve all payment records for selected unit
         unit_records = get_unit_payments(selected_unit)
@@ -352,26 +355,50 @@ with tab_entry:
                 status_cols[col_idx].error(f"❌ **{m_lbl}**: Unpaid")
 
         st.markdown("---")
-        st.subheader("New Entry (Multi-Year Support)")
+        st.subheader("New Entry")
         
+        # Form Details
         f_col1, f_col2 = st.columns(2)
         with f_col1:
             or_no = st.text_input("Official Receipt (OR NO.)", placeholder="e.g. 2239")
             payment_method = st.selectbox("Payment Method", ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"])
+            
         with f_col2:
-            # Allows selecting across multiple years from 2023 to 2035
-            start_m = st.selectbox("Coverage Start Month & Year", ALL_SELECTABLE_MONTHS, index=12, format_func=lambda x: x.strftime("%b %Y"))
-            end_m = st.selectbox("Coverage End Month & Year", ALL_SELECTABLE_MONTHS, index=12, format_func=lambda x: x.strftime("%b %Y"))
+            st.markdown("**Coverage Period**")
+            # Separated Start Month and Year
+            p_c1, p_c2 = st.columns(2)
+            with p_c1:
+                start_month_name = st.selectbox("Start Month", MONTH_NAMES, index=0)
+            with p_c2:
+                start_year_val = st.selectbox("Start Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024))
+            
+            # Separated End Month and Year
+            p_c3, p_c4 = st.columns(2)
+            with p_c3:
+                end_month_name = st.selectbox("End Month", MONTH_NAMES, index=0)
+            with p_c4:
+                end_year_val = st.selectbox("End Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024))
+
+        # Convert selected names & years to datetime objects
+        start_m_idx = MONTH_NAMES.index(start_month_name) + 1
+        end_m_idx = MONTH_NAMES.index(end_month_name) + 1
+        start_m = datetime(start_year_val, start_m_idx, 1)
+        end_m = datetime(end_year_val, end_m_idx, 1)
         
         # Dynamically calculate recommended amount based on month span
         months_span = (end_m.year - start_m.year) * 12 + (end_m.month - start_m.month) + 1 if end_m >= start_m else 1
         default_calc_amount = max(0.0, float(months_span * MONTHLY_FEE))
         
-        amount = st.number_input(f"Total Amount Received (RM) — Covering {months_span} month(s)", min_value=0.0, step=5.0, value=default_calc_amount)
+        amount = st.number_input(
+            f"Total Amount Received (RM) — Covering {months_span} month(s) from {start_m.strftime('%b %Y')} to {end_m.strftime('%b %Y')}",
+            min_value=0.0,
+            step=5.0,
+            value=default_calc_amount
+        )
 
         if st.button("Submit Payment", type="primary"):
             if start_m > end_m:
-                st.error("Error: Start Month cannot be later than End Month.")
+                st.error("Error: Start Month/Year cannot be later than End Month/Year.")
             else:
                 payment_payload = {
                     "unit_id": selected_unit,
@@ -394,7 +421,7 @@ with tab_monthly:
     with m_col1:
         selected_month_num = st.selectbox("Select Month", list(range(1, 13)), format_func=lambda x: datetime(2024, x, 1).strftime("%B"))
     with m_col2:
-        selected_year = st.number_input("Select Year", min_value=2023, max_value=2035, value=2024)
+        selected_year = st.selectbox("Select Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024))
     with m_col3:
         sort_by_m = st.selectbox("Sort By", ["Collection Date", "Receipt Number (OR NO.)", "Unit ID", "Block"])
     with m_col4:
@@ -444,7 +471,7 @@ with tab_annual:
     # Row 1: Multi-Year Scope, Search, and Filter Controls
     f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 1.5, 1.5, 1.5])
     with f_col1:
-        ann_year = st.number_input("Year Scope", min_value=2023, max_value=2035, value=2024, key="annual_year")
+        ann_year = st.selectbox("Year Scope", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="annual_year")
     with f_col2:
         block_filter = st.selectbox("Filter Block", ["All Blocks", "Block S1", "Block S2", "Block S3"])
     with f_col3:
