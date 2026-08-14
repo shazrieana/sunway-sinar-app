@@ -1,66 +1,117 @@
-import streamlit as st
-import pandas as pd
-from supabase import create_client, Client
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
+# Import io for memory byte buffer handling
 import io
+# Import datetime for date formatting and operations
+from datetime import datetime
+# Import relativedelta for month-based date arithmetic
+from dateutil.relativedelta import relativedelta
+# Import openpyxl library for Excel creation and styling
 import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+# Import formatting tools for Excel cells
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+# Import helper to convert column numbers to letters
 from openpyxl.utils import get_column_letter
+# Import pandas for tabular data management
+import pandas as pd
+# Import streamlit web application framework
+import streamlit as st
+# Import Supabase database client
+from supabase import Client, create_client
 
 # ==========================================
 # 1. DATABASE & APP INITIALIZATION
 # ==========================================
+# Retrieve Supabase project URL from secret variables
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
+# Retrieve Supabase public anon key from secret variables
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+# Instantiate connection to Supabase database
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Set page configuration for Streamlit layout
 st.set_page_config(page_title="Neighbourhood Maintenance Portal", layout="wide")
-st.title("Sunway Sinar Maintenance Fee Management System")
+# Set header title of the application
+st.title("🏘️ Neighbourhood Maintenance Fee Management System")
 
-# Define payment year scope
+# Define fixed monthly maintenance fee amount
+MONTHLY_FEE = 35.00
+# Define annual total expected fee (12 * 35.00 = 420.00)
+ANNUAL_EXPECTED_FEE = 12 * MONTHLY_FEE
+# Define standard scope year
 SELECTED_YEAR = 2024
+# Generate date object list for each of the 12 months
 MONTHS = [datetime(SELECTED_YEAR, m, 1) for m in range(1, 13)]
 
 # ==========================================
-# 2. HELPER EXPORT & DATA FUNCTIONS
+# 2. HELPER CALCULATION & EXPORT FUNCTIONS
 # ==========================================
 def get_unit_payments(unit_id):
-    """Retrieves all payment records for a specific unit."""
+    # Fetch all payment rows matching the specified unit ID
     response = supabase.table("payments").select("*").eq("unit_id", unit_id).execute()
+    # Return list of payment records
     return response.data
 
-def get_paid_months_set(unit_id):
-    """Calculates all distinct YYYY-MM months paid by a unit."""
-    records = get_unit_payments(unit_id)
-    paid_months = set()
+def calculate_monthly_balances(records, target_year):
+    # Initialize dictionary mapping month keys to collected amounts
+    monthly_totals = {f"{target_year}-{m:02d}": 0.0 for m in range(1, 13)}
+    
+    # Process each recorded payment transaction
     for rec in records:
+        # Parse coverage start month
         curr = datetime.strptime(rec["start_month"], "%Y-%m-%d")
+        # Parse coverage end month
         end = datetime.strptime(rec["end_month"], "%Y-%m-%d")
+        # Parse total payment amount
+        amount = float(rec["amount_paid"])
+        
+        # Calculate total months span covered by this payment
+        span_months = (end.year - curr.year) * 12 + (end.month - curr.month) + 1
+        # Divide amount equally per month
+        allocated_per_month = amount / max(span_months, 1)
+        
+        # Allocate amounts across all months within date range
         while curr <= end:
-            paid_months.add(curr.strftime("%Y-%m"))
+            # Build YYYY-MM key
+            m_key = curr.strftime("%Y-%m")
+            # If within scope year, add to monthly sum
+            if m_key in monthly_totals:
+                monthly_totals[m_key] += allocated_per_month
+            # Increment by one month
             curr += relativedelta(months=1)
-    return paid_months
+            
+    # Return calculated monthly totals dictionary
+    return monthly_totals
 
 def generate_monthly_excel(records, month_name, year):
-    """Generates a styled Excel workbook for a single month's collection log."""
+    # Initialize workbook
     wb = openpyxl.Workbook()
+    # Select active sheet
     ws = wb.active
+    # Set worksheet name
     ws.title = f"{month_name} {year} Log"
 
-    # Header Title Banner (Merged A1:I1)
+    # Merge top banner cells
     ws.merge_cells("A1:I1")
+    # Reference title cell
     title_cell = ws["A1"]
+    # Set banner text
     title_cell.value = f"NEIGHBOURHOOD MAINTENANCE FEE COLLECTION - {month_name.upper()} {year}"
+    # Set banner font
     title_cell.font = Font(name="Arial", size=12, bold=True, color="FFFFFF")
+    # Set dark blue banner fill
     title_cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    # Set alignment to center
     title_cell.alignment = Alignment(horizontal="center", vertical="center")
+    # Set row height
     ws.row_dimensions[1].height = 28
 
+    # Define column headers
     headers = ["No", "Collection Date", "OR NO.", "Unit ID", "Collector Name", "Payment Method", "Amount Paid (RM)", "Coverage Start", "Coverage End"]
-    ws.append([]) # Blank row
+    # Insert blank row
+    ws.append([])
+    # Append header row
     ws.append(headers)
 
+    # Set styles for header cells
     header_fill = PatternFill(start_color="2F5597", end_color="2F5597", fill_type="solid")
     header_font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
     thin_border = Border(
@@ -68,19 +119,19 @@ def generate_monthly_excel(records, month_name, year):
         top=Side(style='thin', color='D9D9D9'), bottom=Side(style='thin', color='D9D9D9')
     )
 
+    # Set header row height
     ws.row_dimensions[3].height = 22
+    # Style header row cells
     for col_num, header in enumerate(headers, 1):
         cell = ws.cell(row=3, column=col_num)
         cell.fill = header_fill
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    total_amount = 0.0
+    # Add transaction rows
     for idx, rec in enumerate(records, start=1):
         row_num = idx + 3
         amt = float(rec["amount_paid"])
-        total_amount += amt
-        
         row_data = [
             idx,
             rec["created_at"][:10],
@@ -95,6 +146,7 @@ def generate_monthly_excel(records, month_name, year):
         ws.append(row_data)
         ws.row_dimensions[row_num].height = 20
         
+        # Style row cells
         for c_idx in range(1, 10):
             cell = ws.cell(row=row_num, column=c_idx)
             cell.border = thin_border
@@ -107,7 +159,7 @@ def generate_monthly_excel(records, month_name, year):
             else:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Add Summary Total Row
+    # Add total sum row
     tot_row = len(records) + 4
     ws.cell(row=tot_row, column=6, value="TOTAL COLLECTED:").font = Font(name="Arial", size=10, bold=True)
     ws.cell(row=tot_row, column=6).alignment = Alignment(horizontal="right", vertical="center")
@@ -115,23 +167,28 @@ def generate_monthly_excel(records, month_name, year):
     tot_cell.font = Font(name="Arial", size=10, bold=True)
     tot_cell.number_format = '#,##0.00'
 
+    # Auto-fit column widths
     for col in ws.columns:
         max_len = max(len(str(cell.value or '')) for cell in col)
         col_letter = get_column_letter(col[0].column)
         ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
 
+    # Save to memory buffer
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)
     return buffer
 
 def generate_annual_excel(matrix_df, year):
-    """Generates a styled Excel matrix workbook for an entire year."""
+    # Initialize workbook for annual summary
     wb = openpyxl.Workbook()
+    # Select active sheet
     ws = wb.active
+    # Name active worksheet
     ws.title = f"Summary {year}"
 
-    ws.merge_cells("A1:M1")
+    # Merge title across columns A to O (15 columns)
+    ws.merge_cells("A1:O1")
     t_cell = ws["A1"]
     t_cell.value = f"NEIGHBOURHOOD MAINTENANCE FEE - ANNUAL SUMMARY ({year})"
     t_cell.font = Font(name="Arial", size=12, bold=True, color="FFFFFF")
@@ -139,21 +196,26 @@ def generate_annual_excel(matrix_df, year):
     t_cell.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 28
 
+    # Extract headers
     headers = list(matrix_df.columns)
     ws.append([])
     ws.append(headers)
 
+    # Styling fills and fonts
     header_fill = PatternFill(start_color="2F5597", end_color="2F5597", fill_type="solid")
     header_font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
     paid_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
+    partial_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
     unpaid_fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
     paid_font = Font(name="Arial", size=9, bold=True, color="375623")
+    partial_font = Font(name="Arial", size=9, bold=True, color="B25900")
     unpaid_font = Font(name="Arial", size=9, bold=True, color="C65911")
     thin_border = Border(
         left=Side(style='thin', color='D9D9D9'), right=Side(style='thin', color='D9D9D9'),
         top=Side(style='thin', color='D9D9D9'), bottom=Side(style='thin', color='D9D9D9')
     )
 
+    # Set header row height and styling
     ws.row_dimensions[3].height = 22
     for col_num, header in enumerate(headers, 1):
         cell = ws.cell(row=3, column=col_num)
@@ -161,29 +223,63 @@ def generate_annual_excel(matrix_df, year):
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
+    # Add each matrix row
     for idx, row in matrix_df.iterrows():
         r_num = idx + 4
         ws.append(list(row))
         ws.row_dimensions[r_num].height = 20
+        
+        # Unit ID column styling
         ws.cell(row=r_num, column=1).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row=r_num, column=1).font = Font(name="Arial", size=10, bold=True)
         ws.cell(row=r_num, column=1).border = thin_border
 
-        for c_idx, val in enumerate(row[1:], start=2):
+        # 12 Months columns styling
+        for c_idx in range(2, 14):
+            val = row.iloc[c_idx - 1]
             cell = ws.cell(row=r_num, column=c_idx)
             cell.border = thin_border
             cell.alignment = Alignment(horizontal="center", vertical="center")
             if val == "PAID":
                 cell.fill = paid_fill
                 cell.font = paid_font
+            elif "PARTIAL" in str(val):
+                cell.fill = partial_fill
+                cell.font = partial_font
             else:
                 cell.fill = unpaid_fill
                 cell.font = unpaid_font
+                
+        # Total Paid (Column 14) and Outstanding (Column 15) styling
+        for c_idx in [14, 15]:
+            cell = ws.cell(row=r_num, column=c_idx)
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal="right", vertical="center")
+            cell.font = Font(name="Arial", size=9, bold=True)
+            cell.number_format = '#,##0.00'
 
+    # Add Summary Total Row at the bottom
+    if len(matrix_df) > 0:
+        tot_row = len(matrix_df) + 4
+        ws.cell(row=tot_row, column=1, value="TOTAL:").font = Font(name="Arial", size=10, bold=True)
+        ws.cell(row=tot_row, column=1).alignment = Alignment(horizontal="center", vertical="center")
+        
+        # Formula for Total Paid sum
+        tot_paid_cell = ws.cell(row=tot_row, column=14, value=f"=SUM(N4:N{tot_row-1})")
+        tot_paid_cell.font = Font(name="Arial", size=10, bold=True)
+        tot_paid_cell.number_format = '#,##0.00'
+        
+        # Formula for Total Outstanding sum
+        tot_out_cell = ws.cell(row=tot_row, column=15, value=f"=SUM(O4:O{tot_row-1})")
+        tot_out_cell.font = Font(name="Arial", size=10, bold=True)
+        tot_out_cell.number_format = '#,##0.00'
+
+    # Set column widths
     for col in ws.columns:
         col_letter = get_column_letter(col[0].column)
-        ws.column_dimensions[col_letter].width = 11
+        ws.column_dimensions[col_letter].width = 13
 
+    # Save to memory buffer
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)
@@ -192,6 +288,7 @@ def generate_annual_excel(matrix_df, year):
 # ==========================================
 # 3. INTERFACE TABS
 # ==========================================
+# Create three functional tabs in the Streamlit UI
 tab_entry, tab_monthly, tab_annual = st.tabs([
     "📝 Record Payment", 
     "📅 Monthly Collection Exports", 
@@ -216,17 +313,37 @@ with tab_entry:
     st.markdown("---")
     
     if selected_unit:
-        paid_set = get_paid_months_set(selected_unit)
-        st.subheader(f"Status for Unit: {selected_unit}")
+        # Retrieve all payment records for selected unit
+        unit_records = get_unit_payments(selected_unit)
+        # Calculate monthly totals for the year
+        monthly_balances = calculate_monthly_balances(unit_records, SELECTED_YEAR)
         
+        # Calculate Total Paid and Outstanding for this unit
+        total_paid_unit = sum(min(val, MONTHLY_FEE) for val in monthly_balances.values())
+        total_outstanding_unit = max(0.0, ANNUAL_EXPECTED_FEE - total_paid_unit)
+        
+        st.subheader(f"Payment Status for Unit: {selected_unit} ({SELECTED_YEAR})")
+        
+        # Metric cards showing annual financial status
+        m_card1, m_card2, m_card3 = st.columns(3)
+        m_card1.metric("Annual Fee Required", f"RM {ANNUAL_EXPECTED_FEE:.2f}")
+        m_card2.metric("Total Paid (2024)", f"RM {total_paid_unit:.2f}")
+        m_card3.metric("Outstanding Balance", f"RM {total_outstanding_unit:.2f}", delta=f"-RM {total_outstanding_unit:.2f}" if total_outstanding_unit > 0 else "Fully Settled", delta_color="inverse")
+        
+        # Display monthly status indicators
         status_cols = st.columns(6)
         for idx, m_date in enumerate(MONTHS):
             m_str = m_date.strftime("%Y-%m")
+            m_lbl = m_date.strftime('%b')
             col_idx = idx % 6
-            if m_str in paid_set:
-                status_cols[col_idx].success(f"✅ {m_date.strftime('%b')}")
+            paid_amount = monthly_balances.get(m_str, 0.0)
+            
+            if paid_amount >= MONTHLY_FEE:
+                status_cols[col_idx].success(f"✅ **{m_lbl}**: RM{paid_amount:.2f}")
+            elif paid_amount > 0:
+                status_cols[col_idx].warning(f"⚠️ **{m_lbl}**: RM{paid_amount:.2f}/{MONTHLY_FEE:.0f}")
             else:
-                status_cols[col_idx].error(f"❌ {m_date.strftime('%b')}")
+                status_cols[col_idx].error(f"❌ **{m_lbl}**: Unpaid")
 
         st.markdown("---")
         st.subheader("New Entry")
@@ -239,7 +356,7 @@ with tab_entry:
             start_m = st.selectbox("Coverage Start Month", MONTHS, format_func=lambda x: x.strftime("%b %Y"))
             end_m = st.selectbox("Coverage End Month", MONTHS, format_func=lambda x: x.strftime("%b %Y"), index=0)
         
-        amount = st.number_input("Total Amount Received (RM)", min_value=0.0, step=35.0, value=35.0)
+        amount = st.number_input("Total Amount Received (RM)", min_value=0.0, step=5.0, value=35.0)
 
         if st.button("Submit Payment", type="primary"):
             if start_m > end_m:
@@ -255,7 +372,7 @@ with tab_entry:
                     "end_month": end_m.strftime("%Y-%m-%d")
                 }
                 supabase.table("payments").insert(payment_payload).execute()
-                st.success(f"Payment recorded successfully for {selected_unit}!")
+                st.success(f"Payment of RM {amount:.2f} recorded successfully for {selected_unit}!")
                 st.rerun()
 
 # --- TAB 2: MONTHLY COLLECTION EXPORT ---
@@ -284,10 +401,9 @@ with tab_monthly:
         st.write(f"Found **{len(records)}** payment logs.")
         df_logs = pd.DataFrame(records)[["created_at", "or_no", "unit_id", "collector_name", "payment_method", "amount_paid", "start_month", "end_month"]]
         
-        # Add Block column for sorting
+        # Add helper block column for sorting
         df_logs["Block"] = df_logs["unit_id"].apply(lambda x: x.split("-")[0] if "-" in str(x) else "")
         
-        # Mapping sort selections to columns
         sort_map = {
             "Collection Date": "created_at",
             "Receipt Number (OR NO.)": "or_no",
@@ -300,7 +416,6 @@ with tab_monthly:
         
         st.dataframe(df_logs.drop(columns=["Block"]), use_container_width=True)
         
-        # Pass sorted records to Excel generator
         sorted_records = df_logs.to_dict("records")
         m_name = datetime(2024, selected_month_num, 1).strftime("%B")
         excel_file = generate_monthly_excel(sorted_records, m_name, selected_year)
@@ -314,32 +429,37 @@ with tab_monthly:
 
 # --- TAB 3: ANNUAL SUMMARY EXPORT ---
 with tab_annual:
-    st.header("Annual Payment Matrix")
+    st.header("Annual Payment Matrix & Outstanding Tracker")
     
-    a_col1, a_col2, a_col3 = st.columns(3)
-    with a_col1:
-        ann_year = st.number_input("Select Annual Year Scope", min_value=2023, max_value=2030, value=2024, key="annual_year")
-    with a_col2:
-        sort_by_a = st.selectbox("Sort By", ["Unit ID", "Block", "Floor Level"])
-    with a_col3:
-        sort_order_a = st.selectbox("Order", ["Ascending (A-Z / Lowest First)", "Descending (Z-A / Highest First)"], key="ann_order")
+    # Row 1: Search and Filter Controls
+    f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 1.5, 1.5, 1.5])
+    with f_col1:
+        ann_year = st.number_input("Year Scope", min_value=2023, max_value=2030, value=2024, key="annual_year")
+    with f_col2:
+        block_filter = st.selectbox("Filter Block", ["All Blocks", "Block S1", "Block S2", "Block S3"])
+    with f_col3:
+        search_query = st.text_input("🔍 Search Unit", placeholder="e.g. 216, G01, S2")
+    with f_col4:
+        sort_by_a = st.selectbox("Sort By", ["Unit ID", "Floor Level", "Outstanding Balance", "Total Paid"])
+    with f_col5:
+        sort_order_a = st.selectbox("Order", ["Ascending (Lowest / A-Z)", "Descending (Highest / Z-A)"], key="ann_order")
     
+    # Retrieve unit and payment data from Supabase
     all_units = supabase.table("units").select("unit_id", "block", "floor_level").execute().data
     all_payments = supabase.table("payments").select("*").execute().data
     
-    payment_map = {}
+    # Map payments per unit
+    unit_payment_map = {}
     for p in all_payments:
         u = p["unit_id"]
-        if u not in payment_map:
-            payment_map[u] = set()
-        c = datetime.strptime(p["start_month"], "%Y-%m-%d")
-        e = datetime.strptime(p["end_month"], "%Y-%m-%d")
-        while c <= e:
-            payment_map[u].add(c.strftime("%Y-%m"))
-            c += relativedelta(months=1)
+        if u not in unit_payment_map:
+            unit_payment_map[u] = []
+        unit_payment_map[u].append(p)
             
     months_list = [datetime(ann_year, m, 1) for m in range(1, 13)]
     matrix_data = []
+    
+    # Build data matrix
     for u_obj in all_units:
         u_id = u_obj["unit_id"]
         row = {
@@ -347,31 +467,68 @@ with tab_annual:
             "Block": u_obj["block"],
             "Floor": u_obj["floor_level"]
         }
-        u_paid = payment_map.get(u_id, set())
+        
+        u_records = unit_payment_map.get(u_id, [])
+        u_balances = calculate_monthly_balances(u_records, ann_year)
+        
+        unit_total_paid = 0.0
         for m_date in months_list:
             m_str = m_date.strftime("%Y-%m")
-            row[m_date.strftime("%b")] = "PAID" if m_str in u_paid else "UNPAID"
+            bal = u_balances.get(m_str, 0.0)
+            unit_total_paid += min(bal, MONTHLY_FEE)
+            
+            if bal >= MONTHLY_FEE:
+                row[m_date.strftime("%b")] = "PAID"
+            elif bal > 0.0:
+                row[m_date.strftime("%b")] = f"PARTIAL (RM{bal:.0f})"
+            else:
+                row[m_date.strftime("%b")] = "UNPAID"
+                
+        unit_outstanding = max(0.0, ANNUAL_EXPECTED_FEE - unit_total_paid)
+        row["Total Paid (RM)"] = round(unit_total_paid, 2)
+        row["Outstanding (RM)"] = round(unit_outstanding, 2)
         matrix_data.append(row)
         
     df_matrix = pd.DataFrame(matrix_data)
     
-    # Sort Matrix Data
+    # Apply Block Filter
+    if block_filter == "Block S1":
+        df_matrix = df_matrix[df_matrix["Block"] == "S1"]
+    elif block_filter == "Block S2":
+        df_matrix = df_matrix[df_matrix["Block"] == "S2"]
+    elif block_filter == "Block S3":
+        df_matrix = df_matrix[df_matrix["Block"] == "S3"]
+
+    # Apply Search Filter
+    if search_query.strip():
+        q = search_query.strip().lower()
+        df_matrix = df_matrix[df_matrix["Unit ID"].str.lower().str.contains(q)]
+
+    # Apply Sorting
     is_asc_a = True if "Ascending" in sort_order_a else False
-    if sort_by_a == "Block":
-        df_matrix = df_matrix.sort_values(by=["Block", "Unit ID"], ascending=[is_asc_a, True])
-    elif sort_by_a == "Floor Level":
+    if sort_by_a == "Floor Level":
         df_matrix = df_matrix.sort_values(by=["Floor", "Unit ID"], ascending=[is_asc_a, True])
+    elif sort_by_a == "Outstanding Balance":
+        df_matrix = df_matrix.sort_values(by=["Outstanding (RM)", "Unit ID"], ascending=[is_asc_a, True])
+    elif sort_by_a == "Total Paid":
+        df_matrix = df_matrix.sort_values(by=["Total Paid (RM)", "Unit ID"], ascending=[is_asc_a, True])
     else:
         df_matrix = df_matrix.sort_values(by="Unit ID", ascending=is_asc_a)
         
-    # Drop helper sorting columns before displaying and exporting
+    st.caption(f"Showing **{len(df_matrix)}** units matching filter/search.")
+    
+    # Display table without internal helper columns
     df_display = df_matrix.drop(columns=["Block", "Floor"])
     st.dataframe(df_display, use_container_width=True, height=400)
     
+    # Generate and download filtered annual summary Excel
     ann_excel = generate_annual_excel(df_display, ann_year)
+    
+    # Set custom download filename according to filter
+    filter_label = block_filter.replace(" ", "_") if block_filter != "All Blocks" else "All_Blocks"
     st.download_button(
-        label=f"📥 Download Full {ann_year} Annual Summary (.xlsx)",
+        label=f"📥 Download Summary for {block_filter} ({ann_year}) (.xlsx)",
         data=ann_excel,
-        file_name=f"Maintenance_Fee_Summary_{ann_year}.xlsx",
+        file_name=f"Maintenance_Fee_Summary_{ann_year}_{filter_label}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
