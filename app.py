@@ -1,16 +1,16 @@
-# Import io for memory byte buffer handling
+# Import io for memory byte buffer operations
 import io
-# Import datetime for date formatting and operations
+# Import datetime for date formatting and arithmetic
 from datetime import datetime
 # Import relativedelta for month-based date arithmetic
 from dateutil.relativedelta import relativedelta
-# Import openpyxl library for Excel creation and styling
+# Import openpyxl library for Excel file creation and styling
 import openpyxl
-# Import formatting tools for Excel cells
+# Import openpyxl formatting components
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-# Import helper to convert column numbers to letters
+# Import helper function to get column letter from number
 from openpyxl.utils import get_column_letter
-# Import pandas for tabular data management
+# Import pandas library for tabular data structures
 import pandas as pd
 # Import streamlit web application framework
 import streamlit as st
@@ -20,80 +20,80 @@ from supabase import Client, create_client
 # ==========================================
 # 1. DATABASE & APP INITIALIZATION
 # ==========================================
-# Retrieve Supabase project URL from secret variables
+# Retrieve Supabase project URL from Streamlit secrets
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
-# Retrieve Supabase public anon key from secret variables
+# Retrieve Supabase public anon key from Streamlit secrets
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-# Instantiate connection to Supabase database
+# Instantiate connection client to Supabase database
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Set page configuration for Streamlit layout
+# Set page configuration for wide screen layout
 st.set_page_config(page_title="Neighbourhood Maintenance Portal", layout="wide")
-# Set header title of the application
+# Set application header title
 st.title("🏘️ Neighbourhood Maintenance Fee Management System")
 
-# Define fixed monthly maintenance fee amount
+# Define standard monthly maintenance fee amount
 MONTHLY_FEE = 35.00
-# Define annual total expected fee (12 * 35.00 = 420.00)
+# Define annual total expected fee (12 months * RM 35.00 = RM 420.00)
 ANNUAL_EXPECTED_FEE = 12 * MONTHLY_FEE
 
-# Standard Month Names List (1 to 12)
+# Standard Month Names List
 MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
 ]
-# Multi-year options range
+# Multi-year selection range
 YEAR_OPTIONS = list(range(2023, 2036))
 
 # ==========================================
 # 2. HELPER CALCULATION & EXPORT FUNCTIONS
 # ==========================================
 def get_unit_payments(unit_id):
-    # Fetch all payment rows matching the specified unit ID
-    response = supabase.table("payments").select("*").eq("unit_id", unit_id).execute()
+    # Fetch all payment records belonging to a specific unit
+    response = supabase.table("payments").select("*").eq("unit_id", unit_id).order("created_at", desc=True).execute()
     # Return list of payment records
     return response.data
 
 def calculate_monthly_balances(records, target_year):
-    # Initialize dictionary mapping month keys to collected amounts for target year
+    # Initialize dictionary mapping each month key to its total collected amount
     monthly_totals = {f"{target_year}-{m:02d}": 0.0 for m in range(1, 13)}
     
-    # Process each recorded payment transaction
+    # Iterate through each payment record
     for rec in records:
         # Parse coverage start month
         curr = datetime.strptime(rec["start_month"], "%Y-%m-%d")
         # Parse coverage end month
         end = datetime.strptime(rec["end_month"], "%Y-%m-%d")
-        # Parse total payment amount
+        # Parse numeric payment amount
         amount = float(rec["amount_paid"])
         
-        # Calculate total months span covered by this payment
+        # Calculate span of months covered by this payment
         span_months = (end.year - curr.year) * 12 + (end.month - curr.month) + 1
-        # Divide amount equally per month
+        # Allocate amount evenly per covered month
         allocated_per_month = amount / max(span_months, 1)
         
-        # Allocate amounts across all months within date range
+        # Distribute allocation across months in range
         while curr <= end:
             # Build YYYY-MM key
             m_key = curr.strftime("%Y-%m")
-            # If within scope year, add to monthly sum
+            # Accumulate amount if within scope year
             if m_key in monthly_totals:
                 monthly_totals[m_key] += allocated_per_month
-            # Increment by one month
+            # Advance to next month
             curr += relativedelta(months=1)
             
-    # Return calculated monthly totals dictionary
+    # Return accumulated dictionary
     return monthly_totals
 
 def generate_monthly_excel(records, month_name, year):
-    # Initialize workbook
+    # Initialize openpyxl workbook
     wb = openpyxl.Workbook()
     # Select active sheet
     ws = wb.active
-    # Set worksheet name
+    # Set worksheet title
     ws.title = f"{month_name} {year} Log"
 
-    # Merge top banner cells
+    # Merge title banner across columns A to I
     ws.merge_cells("A1:I1")
     # Reference title cell
     title_cell = ws["A1"]
@@ -101,21 +101,21 @@ def generate_monthly_excel(records, month_name, year):
     title_cell.value = f"NEIGHBOURHOOD MAINTENANCE FEE COLLECTION - {month_name.upper()} {year}"
     # Set banner font
     title_cell.font = Font(name="Arial", size=12, bold=True, color="FFFFFF")
-    # Set dark blue banner fill
+    # Set navy fill background
     title_cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-    # Set alignment to center
+    # Center align banner
     title_cell.alignment = Alignment(horizontal="center", vertical="center")
-    # Set row height
+    # Set banner row height
     ws.row_dimensions[1].height = 28
 
-    # Define column headers
+    # Define column header names
     headers = ["No", "Collection Date", "OR NO.", "Unit ID", "Collector Name", "Payment Method", "Amount Paid (RM)", "Coverage Start", "Coverage End"]
-    # Insert blank row
+    # Add blank row for spacing
     ws.append([])
-    # Append header row
+    # Append headers row
     ws.append(headers)
 
-    # Set styles for header cells
+    # Set styles for header row
     header_fill = PatternFill(start_color="2F5597", end_color="2F5597", fill_type="solid")
     header_font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
     thin_border = Border(
@@ -123,9 +123,9 @@ def generate_monthly_excel(records, month_name, year):
         top=Side(style='thin', color='D9D9D9'), bottom=Side(style='thin', color='D9D9D9')
     )
 
-    # Set header row height
+    # Set row height for headers
     ws.row_dimensions[3].height = 22
-    # Style header row cells
+    # Style each header cell
     for col_num, header in enumerate(headers, 1):
         cell = ws.cell(row=3, column=col_num)
         cell.fill = header_fill
@@ -150,7 +150,7 @@ def generate_monthly_excel(records, month_name, year):
         ws.append(row_data)
         ws.row_dimensions[row_num].height = 20
         
-        # Style row cells
+        # Style data cells
         for c_idx in range(1, 10):
             cell = ws.cell(row=row_num, column=c_idx)
             cell.border = thin_border
@@ -172,7 +172,7 @@ def generate_monthly_excel(records, month_name, year):
         tot_cell.font = Font(name="Arial", size=10, bold=True)
         tot_cell.number_format = '#,##0.00'
 
-    # Auto-fit column widths
+    # Auto-adjust column dimensions
     for col in ws.columns:
         max_len = max(len(str(cell.value or '')) for cell in col)
         col_letter = get_column_letter(col[0].column)
@@ -185,14 +185,14 @@ def generate_monthly_excel(records, month_name, year):
     return buffer
 
 def generate_annual_excel(matrix_df, year):
-    # Initialize workbook for annual summary
+    # Initialize workbook for annual matrix
     wb = openpyxl.Workbook()
     # Select active sheet
     ws = wb.active
-    # Name active worksheet
+    # Name worksheet
     ws.title = f"Summary {year}"
 
-    # Merge title across columns A to O (15 columns)
+    # Merge title banner across all 15 columns
     ws.merge_cells("A1:O1")
     t_cell = ws["A1"]
     t_cell.value = f"NEIGHBOURHOOD MAINTENANCE FEE - ANNUAL SUMMARY ({year})"
@@ -220,7 +220,7 @@ def generate_annual_excel(matrix_df, year):
         top=Side(style='thin', color='D9D9D9'), bottom=Side(style='thin', color='D9D9D9')
     )
 
-    # Set header row height and styling
+    # Style header row
     ws.row_dimensions[3].height = 22
     for col_num, header in enumerate(headers, 1):
         cell = ws.cell(row=3, column=col_num)
@@ -228,18 +228,18 @@ def generate_annual_excel(matrix_df, year):
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Add each matrix row
+    # Add each data row
     for idx, row in matrix_df.iterrows():
         r_num = idx + 4
         ws.append(list(row))
         ws.row_dimensions[r_num].height = 20
         
-        # Unit ID column styling
+        # Style unit ID column
         ws.cell(row=r_num, column=1).alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row=r_num, column=1).font = Font(name="Arial", size=10, bold=True)
         ws.cell(row=r_num, column=1).border = thin_border
 
-        # 12 Months columns styling
+        # Style monthly status cells
         for c_idx in range(2, 14):
             val = row.iloc[c_idx - 1]
             cell = ws.cell(row=r_num, column=c_idx)
@@ -255,7 +255,7 @@ def generate_annual_excel(matrix_df, year):
                 cell.fill = unpaid_fill
                 cell.font = unpaid_font
                 
-        # Total Paid (Column 14) and Outstanding (Column 15) styling
+        # Style Total Paid and Outstanding columns
         for c_idx in [14, 15]:
             cell = ws.cell(row=r_num, column=c_idx)
             cell.border = thin_border
@@ -263,7 +263,7 @@ def generate_annual_excel(matrix_df, year):
             cell.font = Font(name="Arial", size=9, bold=True)
             cell.number_format = '#,##0.00'
 
-    # Add Summary Total Row at the bottom
+    # Add bottom total row
     if len(matrix_df) > 0:
         tot_row = len(matrix_df) + 4
         ws.cell(row=tot_row, column=1, value="TOTAL:").font = Font(name="Arial", size=10, bold=True)
@@ -289,57 +289,64 @@ def generate_annual_excel(matrix_df, year):
     return buffer
 
 # ==========================================
-# 3. INTERFACE TABS
+# 3. FOUR INTERFACE TABS
 # ==========================================
-# Create three functional tabs in the Streamlit UI
-tab_entry, tab_monthly, tab_annual = st.tabs([
+# Create four dedicated tabs in Streamlit
+tab_status, tab_entry, tab_monthly, tab_annual = st.tabs([
+    "🔍 Payment Status", 
     "📝 Record Payment", 
     "📅 Monthly Collection Exports", 
     "📊 Annual Payment Summary"
 ])
 
-# --- TAB 1: RECORD PAYMENT ---
-with tab_entry:
-    st.header("Log Maintenance Collection")
+# ==========================================
+# --- TAB 1: 🔍 PAYMENT STATUS (RESIDENT / INQUIRY) ---
+# ==========================================
+with tab_status:
+    st.header("🔍 Check Unit Payment Status")
+    st.caption("Select your unit to check monthly payment records, outstanding balance, and official receipt history.")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        block = st.selectbox("Select Block", ["S1", "S2", "S3"])
-        floor = st.selectbox("Select Floor Level", [0, 1, 2, 3, 4], format_func=lambda x: "Ground Floor" if x == 0 else f"Level {x}")
-    
-    with col2:
-        units_resp = supabase.table("units").select("unit_id").eq("block", block).eq("floor_level", floor).execute()
+    # Unit selection controls (without collector input)
+    u_col1, u_col2, u_col3, u_col4 = st.columns(4)
+    with u_col1:
+        s_block = st.selectbox("Select Block", ["S1", "S2", "S3"], key="status_block")
+    with u_col2:
+        s_floor = st.selectbox("Select Floor Level", [0, 1, 2, 3, 4], format_func=lambda x: "Ground Floor" if x == 0 else f"Level {x}", key="status_floor")
+    with u_col3:
+        units_resp = supabase.table("units").select("unit_id").eq("block", s_block).eq("floor_level", s_floor).execute()
         unit_list = [u["unit_id"] for u in units_resp.data] if units_resp.data else []
-        selected_unit = st.selectbox("Select Unit Number", unit_list) if unit_list else None
-        collector = st.text_input("Collector Name", value="Committee Member")
+        s_unit = st.selectbox("Select Unit Number", unit_list, key="status_unit") if unit_list else None
+    with u_col4:
+        s_view_year = st.selectbox("View Year Scope", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="status_year")
 
     st.markdown("---")
     
-    if selected_unit:
-        # Selector for the year scope shown in the status overview
-        v_col1, v_col2 = st.columns([1, 3])
-        with v_col1:
-            view_year = st.selectbox("View Year Scope", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="entry_view_year")
-        
+    if s_unit:
         # Retrieve all payment records for selected unit
-        unit_records = get_unit_payments(selected_unit)
+        unit_records = get_unit_payments(s_unit)
         # Calculate monthly totals for the selected view year
-        monthly_balances = calculate_monthly_balances(unit_records, view_year)
+        monthly_balances = calculate_monthly_balances(unit_records, s_view_year)
         
-        # Calculate Total Paid and Outstanding for this view year
+        # Calculate Total Paid and Outstanding
         total_paid_unit = sum(min(val, MONTHLY_FEE) for val in monthly_balances.values())
         total_outstanding_unit = max(0.0, ANNUAL_EXPECTED_FEE - total_paid_unit)
         
-        st.subheader(f"Payment Status for Unit: {selected_unit} ({view_year})")
+        st.subheader(f"Unit Status: {s_unit} (Calendar Year {s_view_year})")
         
-        # Metric cards showing annual financial status
+        # Metric cards summary
         m_card1, m_card2, m_card3 = st.columns(3)
-        m_card1.metric(f"Annual Fee Required ({view_year})", f"RM {ANNUAL_EXPECTED_FEE:.2f}")
-        m_card2.metric(f"Total Paid ({view_year})", f"RM {total_paid_unit:.2f}")
-        m_card3.metric(f"Outstanding Balance ({view_year})", f"RM {total_outstanding_unit:.2f}", delta=f"-RM {total_outstanding_unit:.2f}" if total_outstanding_unit > 0 else "Fully Settled", delta_color="inverse")
+        m_card1.metric(f"Annual Fee Required ({s_view_year})", f"RM {ANNUAL_EXPECTED_FEE:.2f}")
+        m_card2.metric(f"Total Paid ({s_view_year})", f"RM {total_paid_unit:.2f}")
+        m_card3.metric(
+            f"Outstanding Balance ({s_view_year})", 
+            f"RM {total_outstanding_unit:.2f}", 
+            delta=f"-RM {total_outstanding_unit:.2f}" if total_outstanding_unit > 0 else "Fully Settled", 
+            delta_color="inverse"
+        )
         
+        st.write("")
         # Display monthly status indicators for the 12 months of view_year
-        view_year_months = [datetime(view_year, m, 1) for m in range(1, 13)]
+        view_year_months = [datetime(s_view_year, m, 1) for m in range(1, 13)]
         status_cols = st.columns(6)
         for idx, m_date in enumerate(view_year_months):
             m_str = m_date.strftime("%Y-%m")
@@ -355,31 +362,58 @@ with tab_entry:
                 status_cols[col_idx].error(f"❌ **{m_lbl}**: Unpaid")
 
         st.markdown("---")
-        st.subheader("New Entry")
+        # Personal Receipt History for this Unit
+        st.subheader(f"🧾 Payment Receipt History ({s_unit})")
+        if len(unit_records) == 0:
+            st.info("No recorded payment transactions found for this unit.")
+        else:
+            df_unit_history = pd.DataFrame(unit_records)[["created_at", "or_no", "payment_method", "amount_paid", "start_month", "end_month", "collector_name"]]
+            df_unit_history.columns = ["Payment Date", "Official Receipt (OR NO.)", "Method", "Amount Paid (RM)", "Start Coverage", "End Coverage", "Collector"]
+            df_unit_history["Payment Date"] = df_unit_history["Payment Date"].apply(lambda x: str(x)[:10])
+            df_unit_history["Amount Paid (RM)"] = df_unit_history["Amount Paid (RM)"].apply(lambda x: f"RM {float(x):.2f}")
+            st.dataframe(df_unit_history, use_container_width=True)
+
+# ==========================================
+# --- TAB 2: 📝 RECORD PAYMENT (COMMITTEE ENTRY) ---
+# ==========================================
+with tab_entry:
+    st.header("📝 Record Maintenance Payment")
+    
+    # Committee collector and unit selection
+    e_col1, e_col2, e_col3, e_col4 = st.columns(4)
+    with e_col1:
+        e_block = st.selectbox("Select Block", ["S1", "S2", "S3"], key="entry_block")
+    with e_col2:
+        e_floor = st.selectbox("Select Floor Level", [0, 1, 2, 3, 4], format_func=lambda x: "Ground Floor" if x == 0 else f"Level {x}", key="entry_floor")
+    with e_col3:
+        units_resp_e = supabase.table("units").select("unit_id").eq("block", e_block).eq("floor_level", e_floor).execute()
+        unit_list_e = [u["unit_id"] for u in units_resp_e.data] if units_resp_e.data else []
+        selected_unit_e = st.selectbox("Select Unit Number", unit_list_e, key="entry_unit") if unit_list_e else None
+    with e_col4:
+        collector = st.text_input("Collector Name", value="Committee Member", key="entry_collector")
+
+    st.markdown("---")
+    
+    if selected_unit_e:
+        st.subheader(f"New Payment Entry for Unit: {selected_unit_e}")
         
         # Row 1: Receipt Number (Left) | Start Month & Year (Right)
         r1_col1, r1_col2, r1_col3 = st.columns([2, 1, 1])
         with r1_col1:
-            # Text input for receipt number
-            or_no = st.text_input("Official Receipt (OR NO.)", placeholder="e.g. 2239")
+            or_no = st.text_input("Official Receipt (OR NO.)", placeholder="e.g. 2239", key="entry_or_no")
         with r1_col2:
-            # Dropdown for start month
-            start_month_name = st.selectbox("Start Month", MONTH_NAMES, index=0)
+            start_month_name = st.selectbox("Start Month", MONTH_NAMES, index=0, key="entry_sm")
         with r1_col3:
-            # Dropdown for start year
-            start_year_val = st.selectbox("Start Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024))
+            start_year_val = st.selectbox("Start Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="entry_sy")
 
         # Row 2: Payment Method (Left) | End Month & Year (Right)
         r2_col1, r2_col2, r2_col3 = st.columns([2, 1, 1])
         with r2_col1:
-            # Dropdown for payment method
-            payment_method = st.selectbox("Payment Method", ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"])
+            payment_method = st.selectbox("Payment Method", ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"], key="entry_method")
         with r2_col2:
-            # Dropdown for end month
-            end_month_name = st.selectbox("End Month", MONTH_NAMES, index=0)
+            end_month_name = st.selectbox("End Month", MONTH_NAMES, index=0, key="entry_em")
         with r2_col3:
-            # Dropdown for end year
-            end_year_val = st.selectbox("End Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024))
+            end_year_val = st.selectbox("End Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="entry_ey")
 
         # Convert selected names & years to datetime objects
         start_m_idx = MONTH_NAMES.index(start_month_name) + 1
@@ -395,15 +429,16 @@ with tab_entry:
             f"Total Amount Received (RM) — Covering {months_span} month(s) from {start_m.strftime('%b %Y')} to {end_m.strftime('%b %Y')}",
             min_value=0.0,
             step=5.0,
-            value=default_calc_amount
+            value=default_calc_amount,
+            key="entry_amount"
         )
 
-        if st.button("Submit Payment", type="primary"):
+        if st.button("Submit Payment Entry", type="primary"):
             if start_m > end_m:
                 st.error("Error: Start Month/Year cannot be later than End Month/Year.")
             else:
                 payment_payload = {
-                    "unit_id": selected_unit,
+                    "unit_id": selected_unit_e,
                     "or_no": or_no,
                     "collector_name": collector,
                     "payment_method": payment_method,
@@ -412,22 +447,33 @@ with tab_entry:
                     "end_month": end_m.strftime("%Y-%m-%d")
                 }
                 supabase.table("payments").insert(payment_payload).execute()
-                st.success(f"Payment of RM {amount:.2f} (covering {start_m.strftime('%b %Y')} to {end_m.strftime('%b %Y')}) recorded successfully for {selected_unit}!")
+                st.success(f"✅ Payment of RM {amount:.2f} recorded successfully for {selected_unit_e}!")
                 st.rerun()
 
-# --- TAB 2: MONTHLY COLLECTION EXPORT ---
+        st.markdown("---")
+        # Recent Entries Feed (Last 5 recorded payments)
+        st.subheader("🕒 Recently Logged Collections (Latest 5)")
+        recent_resp = supabase.table("payments").select("*").order("created_at", desc=True).limit(5).execute()
+        if recent_resp.data:
+            df_recent = pd.DataFrame(recent_resp.data)[["created_at", "or_no", "unit_id", "collector_name", "payment_method", "amount_paid", "start_month", "end_month"]]
+            df_recent.columns = ["Logged Date", "OR NO.", "Unit ID", "Collector", "Method", "Amount (RM)", "Start", "End"]
+            st.dataframe(df_recent, use_container_width=True)
+
+# ==========================================
+# --- TAB 3: 📅 MONTHLY COLLECTION EXPORT ---
+# ==========================================
 with tab_monthly:
-    st.header("Monthly Collection Logs")
+    st.header("📅 Monthly Collection Logs")
     
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     with m_col1:
-        selected_month_num = st.selectbox("Select Month", list(range(1, 13)), format_func=lambda x: datetime(2024, x, 1).strftime("%B"))
+        selected_month_num = st.selectbox("Select Month", list(range(1, 13)), format_func=lambda x: datetime(2024, x, 1).strftime("%B"), key="m_month")
     with m_col2:
-        selected_year = st.selectbox("Select Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024))
+        selected_year = st.selectbox("Select Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="m_year")
     with m_col3:
-        sort_by_m = st.selectbox("Sort By", ["Collection Date", "Receipt Number (OR NO.)", "Unit ID", "Block"])
+        sort_by_m = st.selectbox("Sort By", ["Collection Date", "Receipt Number (OR NO.)", "Unit ID", "Block"], key="m_sort")
     with m_col4:
-        sort_order_m = st.selectbox("Order", ["Ascending (A-Z / Oldest First)", "Descending (Z-A / Newest First)"])
+        sort_order_m = st.selectbox("Order", ["Ascending (A-Z / Oldest First)", "Descending (Z-A / Newest First)"], key="m_order")
 
     m_start_str = f"{selected_year}-{selected_month_num:02d}-01"
     next_m = datetime(selected_year, selected_month_num, 1) + relativedelta(months=1)
@@ -466,20 +512,22 @@ with tab_monthly:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-# --- TAB 3: ANNUAL SUMMARY EXPORT ---
+# ==========================================
+# --- TAB 4: 📊 ANNUAL PAYMENT SUMMARY ---
+# ==========================================
 with tab_annual:
-    st.header("Annual Payment Matrix & Outstanding Tracker")
+    st.header("📊 Annual Payment Matrix & Outstanding Tracker")
     
-    # Row 1: Multi-Year Scope, Search, and Filter Controls
+    # Multi-Year Scope, Search, and Filter Controls
     f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 1.5, 1.5, 1.5])
     with f_col1:
         ann_year = st.selectbox("Year Scope", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="annual_year")
     with f_col2:
-        block_filter = st.selectbox("Filter Block", ["All Blocks", "Block S1", "Block S2", "Block S3"])
+        block_filter = st.selectbox("Filter Block", ["All Blocks", "Block S1", "Block S2", "Block S3"], key="ann_block_filter")
     with f_col3:
-        search_query = st.text_input("🔍 Search Unit", placeholder="e.g. 216, G01, S2")
+        search_query = st.text_input("🔍 Search Unit", placeholder="e.g. 216, G01, S2", key="ann_search")
     with f_col4:
-        sort_by_a = st.selectbox("Sort By", ["Unit ID", "Floor Level", "Outstanding Balance", "Total Paid"])
+        sort_by_a = st.selectbox("Sort By", ["Unit ID", "Floor Level", "Outstanding Balance", "Total Paid"], key="ann_sort")
     with f_col5:
         sort_order_a = st.selectbox("Order", ["Ascending (Lowest / A-Z)", "Descending (Highest / Z-A)"], key="ann_order")
     
