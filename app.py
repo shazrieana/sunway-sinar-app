@@ -36,10 +36,11 @@ st.title("🏘️ Neighbourhood Maintenance Fee Management System")
 MONTHLY_FEE = 35.00
 # Define annual total expected fee (12 * 35.00 = 420.00)
 ANNUAL_EXPECTED_FEE = 12 * MONTHLY_FEE
-# Define standard scope year
-SELECTED_YEAR = 2024
-# Generate date object list for each of the 12 months
-MONTHS = [datetime(SELECTED_YEAR, m, 1) for m in range(1, 13)]
+
+# Generate a wide range of selectable months for multi-year operations (2023 to 2035)
+ALL_SELECTABLE_MONTHS = [
+    datetime(y, m, 1) for y in range(2023, 2036) for m in range(1, 13)
+]
 
 # ==========================================
 # 2. HELPER CALCULATION & EXPORT FUNCTIONS
@@ -51,7 +52,7 @@ def get_unit_payments(unit_id):
     return response.data
 
 def calculate_monthly_balances(records, target_year):
-    # Initialize dictionary mapping month keys to collected amounts
+    # Initialize dictionary mapping month keys to collected amounts for target year
     monthly_totals = {f"{target_year}-{m:02d}": 0.0 for m in range(1, 13)}
     
     # Process each recorded payment transaction
@@ -160,12 +161,13 @@ def generate_monthly_excel(records, month_name, year):
                 cell.alignment = Alignment(horizontal="center", vertical="center")
 
     # Add total sum row
-    tot_row = len(records) + 4
-    ws.cell(row=tot_row, column=6, value="TOTAL COLLECTED:").font = Font(name="Arial", size=10, bold=True)
-    ws.cell(row=tot_row, column=6).alignment = Alignment(horizontal="right", vertical="center")
-    tot_cell = ws.cell(row=tot_row, column=7, value=f"=SUM(G4:G{tot_row-1})")
-    tot_cell.font = Font(name="Arial", size=10, bold=True)
-    tot_cell.number_format = '#,##0.00'
+    if len(records) > 0:
+        tot_row = len(records) + 4
+        ws.cell(row=tot_row, column=6, value="TOTAL COLLECTED:").font = Font(name="Arial", size=10, bold=True)
+        ws.cell(row=tot_row, column=6).alignment = Alignment(horizontal="right", vertical="center")
+        tot_cell = ws.cell(row=tot_row, column=7, value=f"=SUM(G4:G{tot_row-1})")
+        tot_cell.font = Font(name="Arial", size=10, bold=True)
+        tot_cell.number_format = '#,##0.00'
 
     # Auto-fit column widths
     for col in ws.columns:
@@ -264,12 +266,10 @@ def generate_annual_excel(matrix_df, year):
         ws.cell(row=tot_row, column=1, value="TOTAL:").font = Font(name="Arial", size=10, bold=True)
         ws.cell(row=tot_row, column=1).alignment = Alignment(horizontal="center", vertical="center")
         
-        # Formula for Total Paid sum
         tot_paid_cell = ws.cell(row=tot_row, column=14, value=f"=SUM(N4:N{tot_row-1})")
         tot_paid_cell.font = Font(name="Arial", size=10, bold=True)
         tot_paid_cell.number_format = '#,##0.00'
         
-        # Formula for Total Outstanding sum
         tot_out_cell = ws.cell(row=tot_row, column=15, value=f"=SUM(O4:O{tot_row-1})")
         tot_out_cell.font = Font(name="Arial", size=10, bold=True)
         tot_out_cell.number_format = '#,##0.00'
@@ -313,26 +313,32 @@ with tab_entry:
     st.markdown("---")
     
     if selected_unit:
+        # Allow committee member to choose which year to view the unit's status
+        v_col1, v_col2 = st.columns([1, 3])
+        with v_col1:
+            view_year = st.number_input("View Year Scope", min_value=2023, max_value=2035, value=2024, key="entry_view_year")
+        
         # Retrieve all payment records for selected unit
         unit_records = get_unit_payments(selected_unit)
-        # Calculate monthly totals for the year
-        monthly_balances = calculate_monthly_balances(unit_records, SELECTED_YEAR)
+        # Calculate monthly totals for the selected view year
+        monthly_balances = calculate_monthly_balances(unit_records, view_year)
         
-        # Calculate Total Paid and Outstanding for this unit
+        # Calculate Total Paid and Outstanding for this view year
         total_paid_unit = sum(min(val, MONTHLY_FEE) for val in monthly_balances.values())
         total_outstanding_unit = max(0.0, ANNUAL_EXPECTED_FEE - total_paid_unit)
         
-        st.subheader(f"Payment Status for Unit: {selected_unit} ({SELECTED_YEAR})")
+        st.subheader(f"Payment Status for Unit: {selected_unit} ({view_year})")
         
         # Metric cards showing annual financial status
         m_card1, m_card2, m_card3 = st.columns(3)
-        m_card1.metric("Annual Fee Required", f"RM {ANNUAL_EXPECTED_FEE:.2f}")
-        m_card2.metric("Total Paid (2024)", f"RM {total_paid_unit:.2f}")
-        m_card3.metric("Outstanding Balance", f"RM {total_outstanding_unit:.2f}", delta=f"-RM {total_outstanding_unit:.2f}" if total_outstanding_unit > 0 else "Fully Settled", delta_color="inverse")
+        m_card1.metric(f"Annual Fee Required ({view_year})", f"RM {ANNUAL_EXPECTED_FEE:.2f}")
+        m_card2.metric(f"Total Paid ({view_year})", f"RM {total_paid_unit:.2f}")
+        m_card3.metric(f"Outstanding Balance ({view_year})", f"RM {total_outstanding_unit:.2f}", delta=f"-RM {total_outstanding_unit:.2f}" if total_outstanding_unit > 0 else "Fully Settled", delta_color="inverse")
         
-        # Display monthly status indicators
+        # Display monthly status indicators for the 12 months of view_year
+        view_year_months = [datetime(view_year, m, 1) for m in range(1, 13)]
         status_cols = st.columns(6)
-        for idx, m_date in enumerate(MONTHS):
+        for idx, m_date in enumerate(view_year_months):
             m_str = m_date.strftime("%Y-%m")
             m_lbl = m_date.strftime('%b')
             col_idx = idx % 6
@@ -346,17 +352,22 @@ with tab_entry:
                 status_cols[col_idx].error(f"❌ **{m_lbl}**: Unpaid")
 
         st.markdown("---")
-        st.subheader("New Entry")
+        st.subheader("New Entry (Multi-Year Support)")
         
         f_col1, f_col2 = st.columns(2)
         with f_col1:
             or_no = st.text_input("Official Receipt (OR NO.)", placeholder="e.g. 2239")
             payment_method = st.selectbox("Payment Method", ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"])
         with f_col2:
-            start_m = st.selectbox("Coverage Start Month", MONTHS, format_func=lambda x: x.strftime("%b %Y"))
-            end_m = st.selectbox("Coverage End Month", MONTHS, format_func=lambda x: x.strftime("%b %Y"), index=0)
+            # Allows selecting across multiple years from 2023 to 2035
+            start_m = st.selectbox("Coverage Start Month & Year", ALL_SELECTABLE_MONTHS, index=12, format_func=lambda x: x.strftime("%b %Y"))
+            end_m = st.selectbox("Coverage End Month & Year", ALL_SELECTABLE_MONTHS, index=12, format_func=lambda x: x.strftime("%b %Y"))
         
-        amount = st.number_input("Total Amount Received (RM)", min_value=0.0, step=5.0, value=35.0)
+        # Dynamically calculate recommended amount based on month span
+        months_span = (end_m.year - start_m.year) * 12 + (end_m.month - start_m.month) + 1 if end_m >= start_m else 1
+        default_calc_amount = max(0.0, float(months_span * MONTHLY_FEE))
+        
+        amount = st.number_input(f"Total Amount Received (RM) — Covering {months_span} month(s)", min_value=0.0, step=5.0, value=default_calc_amount)
 
         if st.button("Submit Payment", type="primary"):
             if start_m > end_m:
@@ -372,7 +383,7 @@ with tab_entry:
                     "end_month": end_m.strftime("%Y-%m-%d")
                 }
                 supabase.table("payments").insert(payment_payload).execute()
-                st.success(f"Payment of RM {amount:.2f} recorded successfully for {selected_unit}!")
+                st.success(f"Payment of RM {amount:.2f} (covering {start_m.strftime('%b %Y')} to {end_m.strftime('%b %Y')}) recorded successfully for {selected_unit}!")
                 st.rerun()
 
 # --- TAB 2: MONTHLY COLLECTION EXPORT ---
@@ -383,7 +394,7 @@ with tab_monthly:
     with m_col1:
         selected_month_num = st.selectbox("Select Month", list(range(1, 13)), format_func=lambda x: datetime(2024, x, 1).strftime("%B"))
     with m_col2:
-        selected_year = st.number_input("Select Year", min_value=2023, max_value=2030, value=2024)
+        selected_year = st.number_input("Select Year", min_value=2023, max_value=2035, value=2024)
     with m_col3:
         sort_by_m = st.selectbox("Sort By", ["Collection Date", "Receipt Number (OR NO.)", "Unit ID", "Block"])
     with m_col4:
@@ -396,12 +407,11 @@ with tab_monthly:
     records = supabase.table("payments").select("*").gte("created_at", m_start_str).lt("created_at", m_end_str).execute().data
     
     if len(records) == 0:
-        st.info("No payments were logged for this selected month/year.")
+        st.info(f"No payments were logged in {datetime(2024, selected_month_num, 1).strftime('%B')} {selected_year}.")
     else:
         st.write(f"Found **{len(records)}** payment logs.")
         df_logs = pd.DataFrame(records)[["created_at", "or_no", "unit_id", "collector_name", "payment_method", "amount_paid", "start_month", "end_month"]]
         
-        # Add helper block column for sorting
         df_logs["Block"] = df_logs["unit_id"].apply(lambda x: x.split("-")[0] if "-" in str(x) else "")
         
         sort_map = {
@@ -431,10 +441,10 @@ with tab_monthly:
 with tab_annual:
     st.header("Annual Payment Matrix & Outstanding Tracker")
     
-    # Row 1: Search and Filter Controls
+    # Row 1: Multi-Year Scope, Search, and Filter Controls
     f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 1.5, 1.5, 1.5])
     with f_col1:
-        ann_year = st.number_input("Year Scope", min_value=2023, max_value=2030, value=2024, key="annual_year")
+        ann_year = st.number_input("Year Scope", min_value=2023, max_value=2035, value=2024, key="annual_year")
     with f_col2:
         block_filter = st.selectbox("Filter Block", ["All Blocks", "Block S1", "Block S2", "Block S3"])
     with f_col3:
@@ -459,7 +469,7 @@ with tab_annual:
     months_list = [datetime(ann_year, m, 1) for m in range(1, 13)]
     matrix_data = []
     
-    # Build data matrix
+    # Build data matrix for selected year
     for u_obj in all_units:
         u_id = u_obj["unit_id"]
         row = {
@@ -515,7 +525,7 @@ with tab_annual:
     else:
         df_matrix = df_matrix.sort_values(by="Unit ID", ascending=is_asc_a)
         
-    st.caption(f"Showing **{len(df_matrix)}** units matching filter/search.")
+    st.caption(f"Showing **{len(df_matrix)}** units matching filter/search for year **{ann_year}**.")
     
     # Display table without internal helper columns
     df_display = df_matrix.drop(columns=["Block", "Floor"])
@@ -524,7 +534,7 @@ with tab_annual:
     # Generate and download filtered annual summary Excel
     ann_excel = generate_annual_excel(df_display, ann_year)
     
-    # Set custom download filename according to filter
+    # Set custom download filename according to filter and year
     filter_label = block_filter.replace(" ", "_") if block_filter != "All Blocks" else "All_Blocks"
     st.download_button(
         label=f"📥 Download Summary for {block_filter} ({ann_year}) (.xlsx)",
