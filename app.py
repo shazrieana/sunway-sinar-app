@@ -430,7 +430,7 @@ with tab_entry:
         collector = st.text_input("Collector Name", value="Committee Member", key="entry_collector")
 
     st.markdown("---")
-   if selected_unit_e:
+    if selected_unit_e:
         st.subheader(f"New Payment Entry for Unit: {selected_unit_e}")
         
         # Row 1: Receipt Number (Left) | Target Year & Available Unpaid Months (Right)
