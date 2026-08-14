@@ -357,27 +357,29 @@ with tab_entry:
         st.markdown("---")
         st.subheader("New Entry")
         
-        # Form Details
-        f_col1, f_col2 = st.columns(2)
-        with f_col1:
+        # Row 1: Receipt Number (Left) | Start Month & Year (Right)
+        r1_col1, r1_col2, r1_col3 = st.columns([2, 1, 1])
+        with r1_col1:
+            # Text input for receipt number
             or_no = st.text_input("Official Receipt (OR NO.)", placeholder="e.g. 2239")
+        with r1_col2:
+            # Dropdown for start month
+            start_month_name = st.selectbox("Start Month", MONTH_NAMES, index=0)
+        with r1_col3:
+            # Dropdown for start year
+            start_year_val = st.selectbox("Start Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024))
+
+        # Row 2: Payment Method (Left) | End Month & Year (Right)
+        r2_col1, r2_col2, r2_col3 = st.columns([2, 1, 1])
+        with r2_col1:
+            # Dropdown for payment method
             payment_method = st.selectbox("Payment Method", ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"])
-            
-        with f_col2:
-            st.markdown("**Coverage Period**")
-            # Separated Start Month and Year
-            p_c1, p_c2 = st.columns(2)
-            with p_c1:
-                start_month_name = st.selectbox("Start Month", MONTH_NAMES, index=0)
-            with p_c2:
-                start_year_val = st.selectbox("Start Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024))
-            
-            # Separated End Month and Year
-            p_c3, p_c4 = st.columns(2)
-            with p_c3:
-                end_month_name = st.selectbox("End Month", MONTH_NAMES, index=0)
-            with p_c4:
-                end_year_val = st.selectbox("End Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024))
+        with r2_col2:
+            # Dropdown for end month
+            end_month_name = st.selectbox("End Month", MONTH_NAMES, index=0)
+        with r2_col3:
+            # Dropdown for end year
+            end_year_val = st.selectbox("End Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024))
 
         # Convert selected names & years to datetime objects
         start_m_idx = MONTH_NAMES.index(start_month_name) + 1
