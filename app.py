@@ -479,6 +479,12 @@ with tab_entry:
         if recent_resp.data:
             df_recent = pd.DataFrame(recent_resp.data)[["created_at", "or_no", "unit_id", "collector_name", "payment_method", "amount_paid", "start_month", "end_month"]]
             df_recent.columns = ["Logged Date", "OR NO.", "Unit ID", "Collector", "Method", "Amount (RM)", "Start", "End"]
+            
+            # Format timestamp to show only Date, Hours, and Minutes (YYYY-MM-DD HH:MM)
+            df_recent["Logged Date"] = pd.to_datetime(df_recent["Logged Date"]).dt.strftime("%Y-%m-%d %H:%M")
+            # Format Amount to 2 decimal places
+            df_recent["Amount (RM)"] = df_recent["Amount (RM)"].apply(lambda x: f"RM {float(x):.2f}")
+            
             st.dataframe(df_recent, use_container_width=True)
 
 # ==========================================
