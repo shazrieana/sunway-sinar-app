@@ -310,6 +310,22 @@ def generate_annual_excel(matrix_df, year):
     buffer.seek(0)
     return buffer
 
+# Helper function to find the first month that is not fully paid (RM 35.00)
+def get_first_unpaid_month(unit_id, current_year=2024):
+    # Fetch all records for the unit
+    records = get_unit_payments(unit_id)
+    # Check across consecutive years starting from 2023
+    for y in range(2023, 2036):
+        # Calculate monthly balances for that year
+        balances = calculate_monthly_balances(records, y)
+        for m in range(1, 13):
+            m_key = f"{y}-{m:02d}"
+            # If the month is unpaid or partially paid, return this date
+            if balances.get(m_key, 0.0) < MONTHLY_FEE:
+                return datetime(y, m, 1)
+    # Default to current year Jan if all paid
+    return datetime(current_year, 1, 1)
+
 # ==========================================
 # 3. FOUR INTERFACE TABS
 # ==========================================
@@ -419,58 +435,45 @@ with tab_entry:
     if selected_unit_e:
         st.subheader(f"New Payment Entry for Unit: {selected_unit_e}")
         
+        # Auto-detect next unpaid month for selected unit
+        auto_next_date = get_first_unpaid_month(selected_unit_e)
+        default_month_name = MONTH_NAMES[auto_next_date.month - 1]
+        default_year_val = auto_next_date.year
+        
         # Row 1: Receipt Number (Left) | Start Month & Year (Right)
         r1_col1, r1_col2, r1_col3 = st.columns([2, 1, 1])
         with r1_col1:
-            or_no = st.text_input("Official Receipt (OR NO.)", placeholder="e.g. 2239", key="entry_or_no")
+            or_no = st.text_input("Official Receipt (OR NO.)", placeholder="e.g. 0006", key="entry_or_no")
         with r1_col2:
-            start_month_name = st.selectbox("Start Month", MONTH_NAMES, index=0, key="entry_sm")
+            start_month_name = st.selectbox("Start Month", MONTH_NAMES, index=MONTH_NAMES.index(default_month_name), key="entry_sm")
         with r1_col3:
-            start_year_val = st.selectbox("Start Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="entry_sy")
+            start_year_val = st.selectbox("Start Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(default_year_val), key="entry_sy")
 
-        # Row 2: Payment Method (Left) | End Month & Year (Right)
-        r2_col1, r2_col2, r2_col3 = st.columns([2, 1, 1])
+        # Row 2: Payment Method (Left) | Amount Received (Right)
+        r2_col1, r2_col2 = st.columns([2, 2])
         with r2_col1:
             payment_method = st.selectbox("Payment Method", ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"], key="entry_method")
         with r2_col2:
-            end_month_name = st.selectbox("End Month", MONTH_NAMES, index=0, key="entry_em")
-        with r2_col3:
-            end_year_val = st.selectbox("End Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="entry_ey")
+            amount = st.number_input("Total Amount Received (RM)", min_value=0.0, step=5.0, value=35.0, key="entry_amount")
 
-        # Convert selected names & years to datetime objects
+        # Convert start selection to datetime
         start_m_idx = MONTH_NAMES.index(start_month_name) + 1
-        end_m_idx = MONTH_NAMES.index(end_month_name) + 1
         start_m = datetime(start_year_val, start_m_idx, 1)
-        end_m = datetime(end_year_val, end_m_idx, 1)
-        
-        # Dynamically calculate recommended amount based on month span
-        months_span = (end_m.year - start_m.year) * 12 + (end_m.month - start_m.month) + 1 if end_m >= start_m else 1
-        default_calc_amount = max(0.0, float(months_span * MONTHLY_FEE))
-        
-        amount = st.number_input(
-            f"Total Amount Received (RM) — Covering {months_span} month(s) from {start_m.strftime('%b %Y')} to {end_m.strftime('%b %Y')}",
-            min_value=0.0,
-            step=5.0,
-            value=default_calc_amount,
-            key="entry_amount"
-        )
 
         if st.button("Submit Payment Entry", type="primary"):
-            if start_m > end_m:
-                st.error("Error: Start Month/Year cannot be later than End Month/Year.")
-            else:
-                payment_payload = {
-                    "unit_id": selected_unit_e,
-                    "or_no": or_no,
-                    "collector_name": collector,
-                    "payment_method": payment_method,
-                    "amount_paid": amount,
-                    "start_month": start_m.strftime("%Y-%m-%d"),
-                    "end_month": end_m.strftime("%Y-%m-%d")
-                }
-                supabase.table("payments").insert(payment_payload).execute()
-                st.success(f"✅ Payment of RM {amount:.2f} recorded successfully for {selected_unit_e}!")
-                st.rerun()
+            payment_payload = {
+                "unit_id": selected_unit_e,
+                "or_no": or_no,
+                "collector_name": collector,
+                "payment_method": payment_method,
+                "amount_paid": amount,
+                "start_month": start_m.strftime("%Y-%m-%d"),
+                # End month is set to start_month by default since waterfall handles distribution
+                "end_month": start_m.strftime("%Y-%m-%d")
+            }
+            supabase.table("payments").insert(payment_payload).execute()
+            st.success(f"✅ Payment of RM {amount:.2f} recorded starting from {start_m.strftime('%b %Y')} for {selected_unit_e}!")
+            st.rerun()
 
         st.markdown("---")
         # Recent Entries Feed (Last 5 recorded payments)
