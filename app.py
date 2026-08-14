@@ -310,22 +310,21 @@ def generate_annual_excel(matrix_df, year):
     buffer.seek(0)
     return buffer
 
-# Helper function to find the first month that is not fully paid (RM 35.00)
-def get_first_unpaid_month(unit_id, current_year=2024):
+# Helper function to get list of unpaid or partially paid months for a specific year
+def get_unpaid_months_for_year(unit_id, target_year):
     # Fetch all records for the unit
     records = get_unit_payments(unit_id)
-    # Check across consecutive years starting from 2023
-    for y in range(2023, 2036):
-        # Calculate monthly balances for that year
-        balances = calculate_monthly_balances(records, y)
-        for m in range(1, 13):
-            m_key = f"{y}-{m:02d}"
-            # If the month is unpaid or partially paid, return this date
-            if balances.get(m_key, 0.0) < MONTHLY_FEE:
-                return datetime(y, m, 1)
-    # Default to current year Jan if all paid
-    return datetime(current_year, 1, 1)
-
+    # Calculate balances for the chosen year using waterfall rollover
+    balances = calculate_monthly_balances(records, target_year)
+    
+    # Collect only months that have not reached the full RM 35.00 cap
+    available_months = []
+    for m in range(1, 13):
+        m_key = f"{target_year}-{m:02d}"
+        if balances.get(m_key, 0.0) < MONTHLY_FEE:
+            available_months.append(MONTH_NAMES[m - 1])
+            
+    return available_months
 # ==========================================
 # 3. FOUR INTERFACE TABS
 # ==========================================
@@ -432,48 +431,61 @@ with tab_entry:
 
     st.markdown("---")
     
-    if selected_unit_e:
+   if selected_unit_e:
         st.subheader(f"New Payment Entry for Unit: {selected_unit_e}")
         
-        # Auto-detect next unpaid month for selected unit
-        auto_next_date = get_first_unpaid_month(selected_unit_e)
-        default_month_name = MONTH_NAMES[auto_next_date.month - 1]
-        default_year_val = auto_next_date.year
-        
-        # Row 1: Receipt Number (Left) | Start Month & Year (Right)
+        # Row 1: Receipt Number (Left) | Target Year & Available Unpaid Months (Right)
         r1_col1, r1_col2, r1_col3 = st.columns([2, 1, 1])
         with r1_col1:
-            or_no = st.text_input("Official Receipt (OR NO.)", placeholder="e.g. 0006", key="entry_or_no")
+            # Input field for official receipt number
+            or_no = st.text_input("Official Receipt (OR NO.)", placeholder="e.g. 0006", key=f"entry_or_no_{selected_unit_e}")
         with r1_col2:
-            start_month_name = st.selectbox("Start Month", MONTH_NAMES, index=MONTH_NAMES.index(default_month_name), key="entry_sm")
+            # Year selector defaults to 2024
+            entry_year_val = st.selectbox("For Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key=f"entry_yr_{selected_unit_e}")
+        
+        # Calculate only the available/unpaid months for this unit in the selected year
+        unpaid_months = get_unpaid_months_for_year(selected_unit_e, entry_year_val)
+        
         with r1_col3:
-            start_year_val = st.selectbox("Start Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(default_year_val), key="entry_sy")
+            if unpaid_months:
+                # Dropdown only lists unpaid or partially paid months
+                start_month_name = st.selectbox("Available Unpaid Month", unpaid_months, index=0, key=f"entry_sm_{selected_unit_e}_{entry_year_val}")
+            else:
+                # If all months in that year are paid
+                st.selectbox("Available Unpaid Month", ["Fully Settled"], disabled=True, key=f"entry_sm_disabled_{selected_unit_e}")
+                start_month_name = None
 
-        # Row 2: Payment Method (Left) | Amount Received (Right)
-        r2_col1, r2_col2 = st.columns([2, 2])
-        with r2_col1:
-            payment_method = st.selectbox("Payment Method", ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"], key="entry_method")
-        with r2_col2:
-            amount = st.number_input("Total Amount Received (RM)", min_value=0.0, step=5.0, value=35.0, key="entry_amount")
+        # Check if the chosen year is already completely settled
+        if not unpaid_months:
+            st.success(f"🎉 Unit {selected_unit_e} has fully settled all maintenance fees for the year {entry_year_val}! Change the year above if logging advance payments.")
+        else:
+            # Row 2: Payment Method (Left) | Amount Received (Right)
+            r2_col1, r2_col2 = st.columns([2, 2])
+            with r2_col1:
+                # Payment method selector
+                payment_method = st.selectbox("Payment Method", ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"], key=f"entry_method_{selected_unit_e}")
+            with r2_col2:
+                # Amount input defaulting to standard RM 35.00
+                amount = st.number_input("Total Amount Received (RM)", min_value=0.0, step=5.0, value=35.0, key=f"entry_amount_{selected_unit_e}")
 
-        # Convert start selection to datetime
-        start_m_idx = MONTH_NAMES.index(start_month_name) + 1
-        start_m = datetime(start_year_val, start_m_idx, 1)
+            # Convert selected month and year to datetime format
+            start_m_idx = MONTH_NAMES.index(start_month_name) + 1
+            start_m = datetime(entry_year_val, start_m_idx, 1)
 
-        if st.button("Submit Payment Entry", type="primary"):
-            payment_payload = {
-                "unit_id": selected_unit_e,
-                "or_no": or_no,
-                "collector_name": collector,
-                "payment_method": payment_method,
-                "amount_paid": amount,
-                "start_month": start_m.strftime("%Y-%m-%d"),
-                # End month is set to start_month by default since waterfall handles distribution
-                "end_month": start_m.strftime("%Y-%m-%d")
-            }
-            supabase.table("payments").insert(payment_payload).execute()
-            st.success(f"✅ Payment of RM {amount:.2f} recorded starting from {start_m.strftime('%b %Y')} for {selected_unit_e}!")
-            st.rerun()
+            # Submit button
+            if st.button("Submit Payment Entry", type="primary"):
+                payment_payload = {
+                    "unit_id": selected_unit_e,
+                    "or_no": or_no,
+                    "collector_name": collector,
+                    "payment_method": payment_method,
+                    "amount_paid": amount,
+                    "start_month": start_m.strftime("%Y-%m-%d"),
+                    "end_month": start_m.strftime("%Y-%m-%d")
+                }
+                supabase.table("payments").insert(payment_payload).execute()
+                st.success(f"✅ Payment of RM {amount:.2f} recorded for {start_month_name} {entry_year_val} on {selected_unit_e}!")
+                st.rerun()
 
         st.markdown("---")
         # Recent Entries Feed (Last 5 recorded payments)
