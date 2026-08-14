@@ -28,9 +28,9 @@ SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Set page configuration for wide screen layout
-st.set_page_config(page_title="Neighbourhood Maintenance Portal", layout="wide")
+st.set_page_config(page_title="Sunway Sinar Maintenance Portal", layout="wide")
 # Set application header title
-st.title("🏘️ Neighbourhood Maintenance Fee Management System")
+st.title("Sunway Sinar Maintenance Fee Management System")
 
 # Define standard monthly maintenance fee amount
 MONTHLY_FEE = 35.00
@@ -120,7 +120,7 @@ def generate_monthly_excel(records, month_name, year):
     # Reference title cell
     title_cell = ws["A1"]
     # Set banner text
-    title_cell.value = f"NEIGHBOURHOOD MAINTENANCE FEE COLLECTION - {month_name.upper()} {year}"
+    title_cell.value = f"SUNWAY SINAR MAINTENANCE FEE COLLECTION - {month_name.upper()} {year}"
     # Set banner font
     title_cell.font = Font(name="Arial", size=12, bold=True, color="FFFFFF")
     # Set navy fill background
@@ -217,7 +217,7 @@ def generate_annual_excel(matrix_df, year):
     # Merge title banner across all 15 columns
     ws.merge_cells("A1:O1")
     t_cell = ws["A1"]
-    t_cell.value = f"NEIGHBOURHOOD MAINTENANCE FEE - ANNUAL SUMMARY ({year})"
+    t_cell.value = f"SUNWAY SINAR MAINTENANCE FEE - ANNUAL SUMMARY ({year})"
     t_cell.font = Font(name="Arial", size=12, bold=True, color="FFFFFF")
     t_cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
     t_cell.alignment = Alignment(horizontal="center", vertical="center")
