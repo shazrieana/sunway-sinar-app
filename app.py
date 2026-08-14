@@ -430,7 +430,6 @@ with tab_entry:
         collector = st.text_input("Collector Name", value="Committee Member", key="entry_collector")
 
     st.markdown("---")
-    
    if selected_unit_e:
         st.subheader(f"New Payment Entry for Unit: {selected_unit_e}")
         
