@@ -382,21 +382,38 @@ with tab_status:
         )
         
         st.write("")
-        # Display monthly status indicators for the 12 months of view_year
+       # Display monthly status indicators for the 12 months of view_year (Mobile & Desktop Chronological Fix)
         view_year_months = [datetime(s_view_year, m, 1) for m in range(1, 13)]
-        status_cols = st.columns(6)
-        for idx, m_date in enumerate(view_year_months):
+        
+        # Row 1: January to June
+        r1_cols = st.columns(6)
+        for idx in range(6):
+            m_date = view_year_months[idx]
             m_str = m_date.strftime("%Y-%m")
             m_lbl = m_date.strftime('%b')
-            col_idx = idx % 6
             paid_amount = monthly_balances.get(m_str, 0.0)
             
             if paid_amount >= MONTHLY_FEE:
-                status_cols[col_idx].success(f"✅ **{m_lbl}**: RM{paid_amount:.2f}")
+                r1_cols[idx].success(f"✅ **{m_lbl}**: RM{paid_amount:.2f}")
             elif paid_amount > 0:
-                status_cols[col_idx].warning(f"⚠️ **{m_lbl}**: RM{paid_amount:.2f}/{MONTHLY_FEE:.0f}")
+                r1_cols[idx].warning(f"⚠️ **{m_lbl}**: RM{paid_amount:.2f}/{MONTHLY_FEE:.0f}")
             else:
-                status_cols[col_idx].error(f"❌ **{m_lbl}**: Unpaid")
+                r1_cols[idx].error(f"❌ **{m_lbl}**: Unpaid")
+
+        # Row 2: July to December
+        r2_cols = st.columns(6)
+        for idx in range(6, 12):
+            m_date = view_year_months[idx]
+            m_str = m_date.strftime("%Y-%m")
+            m_lbl = m_date.strftime('%b')
+            paid_amount = monthly_balances.get(m_str, 0.0)
+            
+            if paid_amount >= MONTHLY_FEE:
+                r2_cols[idx - 6].success(f"✅ **{m_lbl}**: RM{paid_amount:.2f}")
+            elif paid_amount > 0:
+                r2_cols[idx - 6].warning(f"⚠️ **{m_lbl}**: RM{paid_amount:.2f}/{MONTHLY_FEE:.0f}")
+            else:
+                r2_cols[idx - 6].error(f"❌ **{m_lbl}**: Unpaid")
 
         st.markdown("---")
         # Personal Receipt History for this Unit
