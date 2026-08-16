@@ -657,43 +657,125 @@ with tab_entry:
                 st.success(t["payment_success"].format(amt=amount, month=start_month_name, year=entry_year_val, unit=selected_unit_e))
                 st.rerun()
 
+    # Add horizontal separator line
     st.markdown("---")
-    # Interactive Recent Entries Management (Edit & Delete for Committee)
-    st.subheader(t["recent_entries_title"])
-    
-    recent_resp = supabase.table("payments").select("*").order("created_at", desc=True).limit(5).execute()
-    
-    if recent_resp.data:
-        for idx, rec in enumerate(recent_resp.data):
+    # Section header title with multi-language support
+    st.subheader("🛠️ Carian & Pengurusan Rekod Pembayaran" if lang == "ms" else "🛠️ Search & Manage Payment Records")
+
+    # Layout filter controls into three columns
+    ctl_c1, ctl_c2, ctl_c3 = st.columns([2, 1, 1])
+    # Search input field for Unit, OR NO, or Collector
+    with ctl_c1:
+        # Text input to filter payment transactions
+        search_kw = st.text_input("🔍 Cari Resit / Unit / Pemungut" if lang == "ms" else "🔍 Search Receipt / Unit / Collector", placeholder="cth. 0006, S2-216, nana" if lang == "ms" else "e.g. 0006, S2-216, nana", key="manage_search_kw")
+    # Dropdown to choose how many entries to display
+    with ctl_c2:
+        # Row limit options list
+        limit_choice = st.selectbox("Paparkan" if lang == "ms" else "Show", ["5", "10", "20", "50", "Semua / All"], index=0, key="manage_limit_choice")
+    # Dropdown to choose sorting order
+    with ctl_c3:
+        # Chronological sort options list
+        sort_choice = st.selectbox("Susunan" if lang == "ms" else "Sort Order", ["Terkini / Newest", "Terkuno / Oldest"], index=0, key="manage_sort_choice")
+
+    # Build Supabase database query
+    query_builder = supabase.table("payments").select("*")
+    # Apply ascending or descending order based on selection
+    is_desc = True if "Newest" in sort_choice or "Terkini" in sort_choice else False
+    # Order query by creation timestamp
+    query_builder = query_builder.order("created_at", desc=is_desc)
+
+    # Fetch data records from Supabase
+    all_mgmt_data = query_builder.execute().data or []
+
+    # Filter records based on the search keyword
+    if search_kw.strip():
+        # Clean and convert search term to lowercase
+        q_term = search_kw.strip().lower()
+        # Filter list by checking receipt, unit, and collector fields
+        filtered_records = [
+            r for r in all_mgmt_data 
+            if q_term in str(r.get("or_no", "")).lower() 
+            or q_term in str(r.get("unit_id", "")).lower() 
+            or q_term in str(r.get("collector_name", "")).lower()
+        ]
+    else:
+        # If no search keyword, keep full list
+        filtered_records = all_mgmt_data
+
+    # Apply row limit truncation
+    if limit_choice != "Semua / All":
+        # Slice list up to selected integer limit
+        display_records = filtered_records[:int(limit_choice)]
+    else:
+        # Show all matching records
+        display_records = filtered_records
+
+    # Display count summary caption
+    st.caption(f"Memaparkan **{len(display_records)}** daripada **{len(filtered_records)}** rekod dijumpai." if lang == "ms" else f"Showing **{len(display_records)}** of **{len(filtered_records)}** matching records.")
+
+    # Render each matching payment entry inside an expandable edit card
+    if display_records:
+        # Loop through filtered records with index
+        for idx, rec in enumerate(display_records):
+            # Extract unit ID
             r_unit = rec.get("unit_id", "-")
+            # Extract created timestamp string
             r_created_at = rec.get("created_at", "")
+            # Format timestamp display string
             r_date = str(r_created_at)[:16].replace("T", " ")
+            # Extract official receipt number
             r_or = rec.get("or_no", "-")
+            # Extract amount paid as float
             r_amt = float(rec.get("amount_paid", 0.0))
+            # Extract payment method
             r_method = rec.get("payment_method", "CASH")
+            # Extract collector name
             r_collector = rec.get("collector_name", "-")
             
+            # Format expander label title
             card_label = f"📍 {r_unit} | Resit: {r_or} | RM {r_amt:.2f} ({r_date})" if lang == "ms" else f"📍 {r_unit} | Receipt: {r_or} | RM {r_amt:.2f} ({r_date})"
+            # Render expandable editing container
             with st.expander(card_label):
+                # Create 4 columns for editable fields
                 edit_c1, edit_c2, edit_c3, edit_c4 = st.columns(4)
+                # Field 1: Official receipt number input
                 with edit_c1:
+                    # Text input to modify receipt number
                     new_or_val = st.text_input("OR NO.", value=r_or, key=f"edit_or_{idx}_{r_created_at}")
+                # Field 2: Payment method selector
                 with edit_c2:
+                    # Standard payment methods list
                     methods = ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"]
+                    # Determine current method index
                     cur_idx = methods.index(r_method) if r_method in methods else 0
+                    # Selectbox to modify payment method
                     new_meth_val = st.selectbox("Kaedah" if lang == "ms" else "Method", methods, index=cur_idx, key=f"edit_meth_{idx}_{r_created_at}")
+                # Field 3: Amount received input
                 with edit_c3:
+                    # Number input to modify payment amount
                     new_amt_val = st.number_input("Jumlah (RM)" if lang == "ms" else "Amount (RM)", value=r_amt, step=5.0, key=f"edit_amt_{idx}_{r_created_at}")
+                # Field 4: Collector name input
                 with edit_c4:
+                    # Text input to modify collector name
                     new_col_val = st.text_input("Pemungut" if lang == "ms" else "Collector", value=r_collector, key=f"edit_col_{idx}_{r_created_at}")
                 
+                # Layout action buttons in 2 columns
                 btn_c1, btn_c2 = st.columns([1, 1])
+                # Save button column
                 with btn_c1:
+                    # Button to save changes back to Supabase
                     if st.button(t["save_changes_btn"], key=f"btn_save_{idx}_{r_created_at}", type="primary"):
+                        # Execute update query
                         update_payment_entry(rec, new_or_val, new_col_val, new_meth_val, new_amt_val)
+                # Delete button column
                 with btn_c2:
+                    # Button to permanently delete record
                     if st.button(t["delete_record_btn"], key=f"btn_del_{idx}_{r_created_at}"):
+                        # Execute delete query
                         delete_payment_entry(rec)
+    else:
+        # Display notice if no records match the filter
+        st.info("Tiada rekod pembayaran dijumpai sepadan dengan carian." if lang == "ms" else "No payment records found matching your query.")
 
 # ==========================================
 # --- TAB 3: 📅 MONTHLY COLLECTION EXPORT ---
