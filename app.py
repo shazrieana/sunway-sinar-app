@@ -51,6 +51,8 @@ TRANSLATIONS = {
         "tab2_title": "📝 Record Payment",
         "tab3_title": "📅 Monthly Collection",
         "tab4_title": "📊 Annual Summary",
+        
+        # Tab 1
         "tab1_header": "🔍 Check Unit Payment Status",
         "tab1_caption": "Select your unit to check monthly payment records, outstanding balance, and official receipt history.",
         "select_block": "Select Block",
@@ -74,6 +76,8 @@ TRANSLATIONS = {
         "col_start": "Start Coverage",
         "col_end": "End Coverage",
         "col_collector": "Collector",
+        
+        # Tab 2
         "tab2_header": "📝 Record Maintenance Payment",
         "collector_name_label": "Collector Name",
         "collector_default": "Committee Member",
@@ -88,6 +92,34 @@ TRANSLATIONS = {
         "payment_success": "Payment of RM {amt:.2f} recorded for {month} {year} on {unit}!",
         "recent_entries_title": "🕒 Recently Logged Collections (Latest 5)",
         "col_logged_date": "Logged Date",
+        
+        # Tab 3
+        "tab3_header": "📅 Monthly Collection Logs",
+        "select_month": "Select Month",
+        "select_year": "Select Year",
+        "sort_by": "Sort By",
+        "order_by": "Order",
+        "sort_opt_date": "Collection Date",
+        "sort_opt_receipt": "Receipt Number (OR NO.)",
+        "sort_opt_unit": "Unit ID",
+        "sort_opt_block": "Block",
+        "sort_opt_floor": "Floor Level",
+        "sort_opt_out": "Outstanding Balance",
+        "sort_opt_total": "Total Paid",
+        "order_asc": "Ascending (Oldest / Lowest / A-Z)",
+        "order_desc": "Descending (Newest / Highest / Z-A)",
+        "no_monthly_records": "No payments were logged in {month} {year}.",
+        "found_logs": "Found **{count}** payment logs.",
+        "dl_monthly_btn": "📥 Download {month} {year} Collection Log (.xlsx)",
+        
+        # Tab 4
+        "tab4_header": "📊 Annual Payment Matrix & Outstanding Tracker",
+        "filter_block": "Filter Block",
+        "all_blocks": "All Blocks",
+        "search_unit": "🔍 Search Unit",
+        "search_placeholder": "e.g. 216, G01, S2",
+        "showing_units_msg": "Showing **{count}** units matching filter/search for year **{year}**.",
+        "dl_annual_btn": "📥 Download Summary for {block} ({year}) (.xlsx)"
     },
     "ms": {
         "app_title": "🏢 Portal Yuran Penyelenggaraan Sunway Sinar",
@@ -95,6 +127,8 @@ TRANSLATIONS = {
         "tab2_title": "📝 Rekod Bayaran",
         "tab3_title": "📅 Kutipan Bulanan",
         "tab4_title": "📊 Ringkasan Tahunan",
+        
+        # Tab 1
         "tab1_header": "🔍 Semak Status Bayaran Unit",
         "tab1_caption": "Pilih unit anda untuk menyemak rekod bayaran bulanan, baki tertunggak, dan sejarah resit rasmi.",
         "select_block": "Pilih Blok",
@@ -118,6 +152,8 @@ TRANSLATIONS = {
         "col_start": "Mula Liputan",
         "col_end": "Akhir Liputan",
         "col_collector": "Pemungut",
+        
+        # Tab 2
         "tab2_header": "📝 Rekod Bayaran Penyelenggaraan",
         "collector_name_label": "Nama Pemungut",
         "collector_default": "Ahli Jawatankuasa",
@@ -132,6 +168,34 @@ TRANSLATIONS = {
         "payment_success": "Bayaran sebanyak RM {amt:.2f} berjaya direkodkan untuk {month} {year} pada unit {unit}!",
         "recent_entries_title": "🕒 Kutipan Terkini Direkod (5 Terakhir)",
         "col_logged_date": "Tarikh Direkod",
+        
+        # Tab 3
+        "tab3_header": "📅 Log Kutipan Bulanan",
+        "select_month": "Pilih Bulan",
+        "select_year": "Pilih Tahun",
+        "sort_by": "Susun Mengikut",
+        "order_by": "Tertib",
+        "sort_opt_date": "Tarikh Kutipan",
+        "sort_opt_receipt": "No. Resit Rasmi (OR NO.)",
+        "sort_opt_unit": "ID Unit",
+        "sort_opt_block": "Blok",
+        "sort_opt_floor": "Tingkat",
+        "sort_opt_out": "Baki Tertunggak",
+        "sort_opt_total": "Jumlah Telah Dibayar",
+        "order_asc": "Menaik (Terkuno / Terendah / A-Z)",
+        "order_desc": "Menurun (Terkini / Tertinggi / Z-A)",
+        "no_monthly_records": "Tiada rekod bayaran direkodkan pada {month} {year}.",
+        "found_logs": "Dijumpai sebanyak **{count}** rekod log bayaran.",
+        "dl_monthly_btn": "📥 Muat Turun Log Kutipan {month} {year} (.xlsx)",
+        
+        # Tab 4
+        "tab4_header": "📊 Matriks Bayaran Tahunan & Penjejak Tunggakan",
+        "filter_block": "Tapis Blok",
+        "all_blocks": "Semua Blok",
+        "search_unit": "🔍 Cari Unit",
+        "search_placeholder": "cth. 216, G01, S2",
+        "showing_units_msg": "Memaparkan **{count}** unit sepadan dengan carian/tapisan bagi tahun **{year}**.",
+        "dl_annual_btn": "📥 Muat Turun Ringkasan bagi {block} ({year}) (.xlsx)"
     }
 }
 
@@ -151,7 +215,6 @@ with head_col1:
 def get_unit_payments(unit_id):
     # Fetch all payment records belonging to a specific unit
     response = supabase.table("payments").select("*").eq("unit_id", unit_id).order("created_at", desc=True).execute()
-    # Return list of payment records
     return response.data
 
 def calculate_monthly_balances(records, target_year):
@@ -208,7 +271,6 @@ def calculate_monthly_balances(records, target_year):
     return {f"{target_year}-{m:02d}": waterfall_balances.get(f"{target_year}-{m:02d}", 0.0) for m in range(1, 13)}
 
 def generate_monthly_excel(records, month_name, year):
-    # Initialize openpyxl workbook
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = f"{month_name} {year} Log"
@@ -586,17 +648,28 @@ with tab_entry:
 # --- TAB 3: 📅 MONTHLY COLLECTION EXPORT ---
 # ==========================================
 with tab_monthly:
-    st.header("📅 Monthly Collection Logs")
+    st.header(t["tab3_header"])
     
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     with m_col1:
-        selected_month_num = st.selectbox("Select Month", list(range(1, 13)), format_func=lambda x: datetime(2024, x, 1).strftime("%B"), key="m_month")
+        # Display localized month names
+        selected_month_num = st.selectbox(
+            t["select_month"], 
+            list(range(1, 13)), 
+            format_func=lambda x: datetime(2024, x, 1).strftime("%B") if lang == "en" else [
+                "Januari", "Februari", "Mac", "April", "Mei", "Jun", 
+                "Julai", "Ogos", "September", "Oktober", "November", "Disember"
+            ][x - 1], 
+            key="m_month"
+        )
     with m_col2:
-        selected_year = st.selectbox("Select Year", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="m_year")
+        selected_year = st.selectbox(t["select_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="m_year")
     with m_col3:
-        sort_by_m = st.selectbox("Sort By", ["Collection Date", "Receipt Number (OR NO.)", "Unit ID", "Block"], key="m_sort")
+        sort_opts_m = [t["sort_opt_date"], t["sort_opt_receipt"], t["sort_opt_unit"], t["sort_opt_block"]]
+        sort_by_m = st.selectbox(t["sort_by"], sort_opts_m, key="m_sort")
     with m_col4:
-        sort_order_m = st.selectbox("Order", ["Ascending (A-Z / Oldest First)", "Descending (Z-A / Newest First)"], key="m_order")
+        order_opts_m = [t["order_asc"], t["order_desc"]]
+        sort_order_m = st.selectbox(t["order_by"], order_opts_m, key="m_order")
 
     m_start_str = f"{selected_year}-{selected_month_num:02d}-01"
     next_m = datetime(selected_year, selected_month_num, 1) + relativedelta(months=1)
@@ -604,32 +677,51 @@ with tab_monthly:
 
     records = supabase.table("payments").select("*").gte("created_at", m_start_str).lt("created_at", m_end_str).execute().data
     
+    # Get localized month name for text output
+    display_month_name = datetime(2024, selected_month_num, 1).strftime("%B") if lang == "en" else [
+        "Januari", "Februari", "Mac", "April", "Mei", "Jun", 
+        "Julai", "Ogos", "September", "Oktober", "Disember"
+    ][selected_month_num - 1]
+
     if len(records) == 0:
-        st.info(f"No payments were logged in {datetime(2024, selected_month_num, 1).strftime('%B')} {selected_year}.")
+        st.info(t["no_monthly_records"].format(month=display_month_name, year=selected_year))
     else:
-        st.write(f"Found **{len(records)}** payment logs.")
+        st.write(t["found_logs"].format(count=len(records)))
         df_logs = pd.DataFrame(records)[["created_at", "or_no", "unit_id", "collector_name", "payment_method", "amount_paid", "start_month", "end_month"]]
         df_logs["Block"] = df_logs["unit_id"].apply(lambda x: x.split("-")[0] if "-" in str(x) else "")
         
+        # Sort column dynamic mapping
         sort_map = {
-            "Collection Date": "created_at",
-            "Receipt Number (OR NO.)": "or_no",
-            "Unit ID": "unit_id",
-            "Block": "Block"
+            t["sort_opt_date"]: "created_at",
+            t["sort_opt_receipt"]: "or_no",
+            t["sort_opt_unit"]: "unit_id",
+            t["sort_opt_block"]: "Block"
         }
         
-        is_asc = True if "Ascending" in sort_order_m else False
+        is_asc = True if sort_order_m == t["order_asc"] else False
         df_logs = df_logs.sort_values(by=sort_map[sort_by_m], ascending=is_asc)
-        st.dataframe(df_logs.drop(columns=["Block"]), use_container_width=True)
+        
+        # Apply clean translated headers to logs table
+        df_logs_display = df_logs.drop(columns=["Block"]).copy()
+        df_logs_display.columns = [
+            t["col_logged_date"], t["col_or_no"], "Unit ID", 
+            t["col_collector"], t["col_method"], t["col_amount"], 
+            t["col_start"], t["col_end"]
+        ]
+        
+        # Format Date and Amount columns
+        df_logs_display[t["col_logged_date"]] = pd.to_datetime(df_logs_display[t["col_logged_date"]]).dt.strftime("%Y-%m-%d %H:%M")
+        df_logs_display[t["col_amount"]] = df_logs_display[t["col_amount"]].apply(lambda x: f"RM {float(x):.2f}")
+        
+        st.dataframe(df_logs_display, use_container_width=True)
         
         sorted_records = df_logs.to_dict("records")
-        m_name = datetime(2024, selected_month_num, 1).strftime("%B")
-        excel_file = generate_monthly_excel(sorted_records, m_name, selected_year)
+        excel_file = generate_monthly_excel(sorted_records, display_month_name, selected_year)
         
         st.download_button(
-            label=f"📥 Download {m_name} {selected_year} Collection Log (.xlsx)",
+            label=t["dl_monthly_btn"].format(month=display_month_name, year=selected_year),
             data=excel_file,
-            file_name=f"Collection_Log_{m_name}_{selected_year}.xlsx",
+            file_name=f"Collection_Log_{display_month_name}_{selected_year}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
@@ -637,19 +729,22 @@ with tab_monthly:
 # --- TAB 4: 📊 ANNUAL PAYMENT SUMMARY ---
 # ==========================================
 with tab_annual:
-    st.header("📊 Annual Payment Matrix & Outstanding Tracker")
+    st.header(t["tab4_header"])
     
     f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 1.5, 1.5, 1.5])
     with f_col1:
-        ann_year = st.selectbox("Year Scope", YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="annual_year")
+        ann_year = st.selectbox(t["view_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="annual_year")
     with f_col2:
-        block_filter = st.selectbox("Filter Block", ["All Blocks", "Block S1", "Block S2", "Block S3"], key="ann_block_filter")
+        block_options = [t["all_blocks"], "Block S1", "Block S2", "Block S3"]
+        block_filter = st.selectbox(t["filter_block"], block_options, key="ann_block_filter")
     with f_col3:
-        search_query = st.text_input("🔍 Search Unit", placeholder="e.g. 216, G01, S2", key="ann_search")
+        search_query = st.text_input(t["search_unit"], placeholder=t["search_placeholder"], key="ann_search")
     with f_col4:
-        sort_by_a = st.selectbox("Sort By", ["Unit ID", "Floor Level", "Outstanding Balance", "Total Paid"], key="ann_sort")
+        sort_opts_a = [t["sort_opt_unit"], t["sort_opt_floor"], t["sort_opt_out"], t["sort_opt_total"]]
+        sort_by_a = st.selectbox(t["sort_by"], sort_opts_a, key="ann_sort")
     with f_col5:
-        sort_order_a = st.selectbox("Order", ["Ascending (Lowest / A-Z)", "Descending (Highest / Z-A)"], key="ann_order")
+        order_opts_a = [t["order_asc"], t["order_desc"]]
+        sort_order_a = st.selectbox(t["order_by"], order_opts_a, key="ann_order")
     
     all_units = supabase.table("units").select("unit_id", "block", "floor_level").execute().data
     all_payments = supabase.table("payments").select("*").execute().data
@@ -706,24 +801,24 @@ with tab_annual:
         q = search_query.strip().lower()
         df_matrix = df_matrix[df_matrix["Unit ID"].str.lower().str.contains(q)]
 
-    is_asc_a = True if "Ascending" in sort_order_a else False
-    if sort_by_a == "Floor Level":
+    is_asc_a = True if sort_order_a == t["order_asc"] else False
+    if sort_by_a == t["sort_opt_floor"]:
         df_matrix = df_matrix.sort_values(by=["Floor", "Unit ID"], ascending=[is_asc_a, True])
-    elif sort_by_a == "Outstanding Balance":
+    elif sort_by_a == t["sort_opt_out"]:
         df_matrix = df_matrix.sort_values(by=["Outstanding (RM)", "Unit ID"], ascending=[is_asc_a, True])
-    elif sort_by_a == "Total Paid":
+    elif sort_by_a == t["sort_opt_total"]:
         df_matrix = df_matrix.sort_values(by=["Total Paid (RM)", "Unit ID"], ascending=[is_asc_a, True])
     else:
         df_matrix = df_matrix.sort_values(by="Unit ID", ascending=is_asc_a)
         
-    st.caption(f"Showing **{len(df_matrix)}** units matching filter/search for year **{ann_year}**.")
+    st.caption(t["showing_units_msg"].format(count=len(df_matrix), year=ann_year))
     df_display = df_matrix.drop(columns=["Block", "Floor"])
     st.dataframe(df_display, use_container_width=True, height=400)
     
     ann_excel = generate_annual_excel(df_display, ann_year)
-    filter_label = block_filter.replace(" ", "_") if block_filter != "All Blocks" else "All_Blocks"
+    filter_label = block_filter.replace(" ", "_") if block_filter != t["all_blocks"] else "All_Blocks"
     st.download_button(
-        label=f"📥 Download Summary for {block_filter} ({ann_year}) (.xlsx)",
+        label=t["dl_annual_btn"].format(block=block_filter, year=ann_year),
         data=ann_excel,
         file_name=f"Maintenance_Fee_Summary_{ann_year}_{filter_label}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
