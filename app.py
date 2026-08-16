@@ -43,7 +43,7 @@ MONTH_NAMES = [
 # Multi-year selection range (supporting 2019 onwards)
 YEAR_OPTIONS = list(range(2019, 2036))
 
-# Comprehensive language dictionary for English and Bahasa Melayu
+# Natural, community-friendly language dictionary
 TRANSLATIONS = {
     "en": {
         "app_title": "🏢 Sunway Sinar Maintenance Fee Portal",
@@ -58,24 +58,24 @@ TRANSLATIONS = {
         "select_block": "Select Block",
         "select_floor": "Select Floor Level",
         "select_unit": "Select Unit Number",
-        "view_year": "View Year Scope",
+        "view_year": "View Year",
         "ground_floor": "Ground Floor",
         "level": "Level",
         "unit_status_title": "Unit Status",
         "annual_fee_req": "Annual Fee Required",
         "total_paid": "Total Paid",
         "outstanding_bal": "Outstanding Balance",
-        "fully_settled": "Fully Settled",
+        "fully_settled": "Fully Settled (No Due)",
         "unpaid": "Unpaid",
         "history_title": "🧾 Payment Receipt History",
-        "no_history": "No recorded payment transactions found for this unit.",
+        "no_history": "No payment records found for this unit.",
         "col_pay_date": "Payment Date",
         "col_or_no": "Official Receipt (OR NO.)",
-        "col_method": "Method",
-        "col_amount": "Amount Paid (RM)",
-        "col_start": "Start Coverage",
-        "col_end": "End Coverage",
-        "col_collector": "Collector",
+        "col_method": "Payment Method",
+        "col_amount": "Amount (RM)",
+        "col_start": "Start Month",
+        "col_end": "End Month",
+        "col_collector": "Collector Name",
         
         # Tab 2
         "tab2_header": "📝 Record Maintenance Payment",
@@ -85,37 +85,45 @@ TRANSLATIONS = {
         "or_no_placeholder": "e.g. 0006",
         "for_year": "For Year",
         "unpaid_month_label": "Available Unpaid Month",
-        "all_paid_msg": "🎉 Unit has fully settled all maintenance fees for this year!",
+        "all_paid_msg": "🎉 This unit has fully settled all maintenance fees for this year!",
         "pay_method_label": "Payment Method",
-        "amount_received_label": "Total Amount Received (RM)",
-        "submit_btn": "Submit Payment Entry",
-        "payment_success": "Payment of RM {amt:.2f} recorded for {month} {year} on {unit}!",
-        "recent_entries_title": "🛠️ Manage / Edit Recent Entries (Latest 5)",
+        "amount_received_label": "Amount Received (RM)",
+        "submit_btn": "Submit Payment Record",
+        "payment_success": "Payment of RM {amt:.2f} recorded for {month} {year} on unit {unit}!",
+        "recent_entries_title": "🛠️ Search & Manage Payment Records",
         "save_changes_btn": "💾 Save Changes",
         "delete_record_btn": "🗑️ Delete Record",
+        "search_mgmt_label": "🔍 Search Receipt / Unit / Collector",
+        "search_mgmt_placeholder": "e.g. 0006, S2-216, Nana",
+        "show_label": "Show",
+        "sort_order_label": "Sort Order",
+        "opt_desc": "Newest First (Latest)",
+        "opt_asc": "Oldest First",
+        "showing_mgmt_caption": "Showing **{shown}** of **{total}** matching records.",
+        "no_mgmt_found": "No payment records found matching your search.",
         
         # Tab 3
-        "tab3_header": "📅 Monthly Collection Logs",
+        "tab3_header": "📅 Monthly Collection Records",
         "select_month": "Select Month",
         "select_year": "Select Year",
         "sort_by": "Sort By",
         "order_by": "Order",
-        "sort_opt_date": "Collection Date",
+        "sort_opt_date": "Payment Date",
         "sort_opt_receipt": "Receipt Number (OR NO.)",
         "sort_opt_unit": "Unit ID",
         "sort_opt_block": "Block",
         "sort_opt_floor": "Floor Level",
         "sort_opt_out": "Outstanding Balance",
         "sort_opt_total": "Total Paid",
-        "order_asc": "Ascending (Oldest / Lowest / A-Z)",
-        "order_desc": "Descending (Newest / Highest / Z-A)",
-        "no_monthly_records": "No payments were logged in {month} {year}.",
-        "found_logs": "Found **{count}** payment logs.",
-        "dl_monthly_btn": "📥 Download {month} {year} Collection Log (.xlsx)",
-        "col_logged_date": "Logged Date",
+        "order_asc": "Ascending (A-Z / Oldest / Lowest)",
+        "order_desc": "Descending (Z-A / Newest / Highest)",
+        "no_monthly_records": "No payment records found for {month} {year}.",
+        "found_logs": "Found **{count}** payment records.",
+        "dl_monthly_btn": "📥 Download {month} {year} Collection Record (.xlsx)",
+        "col_logged_date": "Recorded Date",
         
         # Tab 4
-        "tab4_header": "📊 Annual Payment Matrix & Outstanding Tracker",
+        "tab4_header": "📊 Annual Payment Summary & Outstanding Tracker",
         "filter_block": "Filter Block",
         "all_blocks": "All Blocks",
         "search_unit": "🔍 Search Unit",
@@ -125,81 +133,89 @@ TRANSLATIONS = {
     },
     "ms": {
         "app_title": "🏢 Portal Yuran Penyelenggaraan Sunway Sinar",
-        "tab1_title": "🔍 Status Bayaran",
+        "tab1_title": "🔍 Semakan Bayaran",
         "tab2_title": "📝 Rekod Bayaran",
         "tab3_title": "📅 Kutipan Bulanan",
         "tab4_title": "📊 Ringkasan Tahunan",
         
         # Tab 1
         "tab1_header": "🔍 Semak Status Bayaran Unit",
-        "tab1_caption": "Pilih unit anda untuk menyemak rekod bayaran bulanan, baki tertunggak, dan sejarah resit rasmi.",
+        "tab1_caption": "Sila pilih unit anda untuk menyemak rekod bayaran bulanan, baki tunggakan, dan senarai resit bayaran.",
         "select_block": "Pilih Blok",
-        "select_floor": "Pilih Tingkat",
+        "select_floor": "Pilih Aras / Tingkat",
         "select_unit": "Pilih Nombor Unit",
         "view_year": "Pilih Tahun",
-        "ground_floor": "Tingkat Bawah",
-        "level": "Tingkat",
+        "ground_floor": "Aras Bawah (Ground)",
+        "level": "Aras",
         "unit_status_title": "Status Unit",
-        "annual_fee_req": "Jumlah Yuran Tahunan",
-        "total_paid": "Jumlah Telah Dibayar",
-        "outstanding_bal": "Baki Tertunggak",
-        "fully_settled": "Selesai Sepenuhnya",
-        "unpaid": "Belum Dibayar",
-        "history_title": "🧾 Sejarah Pembayaran",
-        "no_history": "Tiada rekod transaksi pembayaran dijumpai untuk unit ini.",
-        "col_pay_date": "Tarikh Bayaran",
-        "col_or_no": "No. Resit Rasmi (OR NO.)",
-        "col_method": "Kaedah Pembayaran",
-        "col_amount": "Jumlah Dibayar (RM)",
-        "col_start": "Dari Tarikh",
-        "col_end": "Hingga Tarikh",
+        "annual_fee_req": "Jumlah Yuran Setahun",
+        "total_paid": "Jumlah Sudah Dibayar",
+        "outstanding_bal": "Baki Tunggakan",
+        "fully_settled": "Selesai (Tiada Tunggakan)",
+        "unpaid": "Belum Bayar",
+        "history_title": "🧾 Sejarah Resit Bayaran",
+        "no_history": "Tiada rekod bayaran dijumpai untuk unit ini.",
+        "col_pay_date": "Tarikh Bayar",
+        "col_or_no": "No. Resit (OR NO.)",
+        "col_method": "Kaedah Bayaran",
+        "col_amount": "Jumlah (RM)",
+        "col_start": "Bulan Mula",
+        "col_end": "Bulan Akhir",
         "col_collector": "Nama Pengutip",
         
         # Tab 2
         "tab2_header": "📝 Rekod Bayaran Penyelenggaraan",
-        "collector_name_label": "Nama Pengutip",
+        "collector_name_label": "Nama Pengutip / AJK",
         "collector_default": "Ahli Jawatankuasa",
-        "new_entry_for": "Kemasukan Bayaran Baru untuk Unit",
+        "new_entry_for": "Rekod Bayaran Baru Bagi Unit",
         "or_no_placeholder": "cth. 0006",
         "for_year": "Untuk Tahun",
-        "unpaid_month_label": "Bulan Belum Dibayar",
-        "all_paid_msg": "🎉 Unit telah menyelesaikan semua yuran penyelenggaraan bagi tahun ini!",
-        "pay_method_label": "Kaedah Pembayaran",
+        "unpaid_month_label": "Pilih Bulan Tertunggak",
+        "all_paid_msg": "🎉 Unit ini telah selesai membayar semua yuran bagi tahun ini!",
+        "pay_method_label": "Kaedah Bayaran",
         "amount_received_label": "Jumlah Diterima (RM)",
-        "submit_btn": "Hantar Rekod Bayaran",
-        "payment_success": "Bayaran sebanyak RM {amt:.2f} berjaya direkodkan untuk {month} {year} pada unit {unit}!",
-        "recent_entries_title": "🛠️ Urus / Padam Rekod Terkini (5 Terakhir)",
+        "submit_btn": "Simpan Rekod Bayaran",
+        "payment_success": "Bayaran RM {amt:.2f} berjaya disimpan bagi {month} {year} untuk unit {unit}!",
+        "recent_entries_title": "🛠️ Carian & Urus Rekod Bayaran",
         "save_changes_btn": "💾 Simpan Perubahan",
         "delete_record_btn": "🗑️ Padam Rekod",
+        "search_mgmt_label": "🔍 Cari No. Resit / Unit / Pengutip",
+        "search_mgmt_placeholder": "cth. 0006, S2-216, Nana",
+        "show_label": "Papar",
+        "sort_order_label": "Susunan",
+        "opt_desc": "Terkini dahulu (Baru ➔ Lama)",
+        "opt_asc": "Terkuno dahulu (Lama ➔ Baru)",
+        "showing_mgmt_caption": "Memaparkan **{shown}** daripada **{total}** rekod dijumpai.",
+        "no_mgmt_found": "Tiada rekod bayaran dijumpai sepadan dengan carian anda.",
         
         # Tab 3
-        "tab3_header": "📅 Log Kutipan Bulanan",
+        "tab3_header": "📅 Rekod Kutipan Bulanan",
         "select_month": "Pilih Bulan",
         "select_year": "Pilih Tahun",
         "sort_by": "Susun Mengikut",
         "order_by": "Tertib",
-        "sort_opt_date": "Tarikh Kutipan",
-        "sort_opt_receipt": "No. Resit Rasmi (OR NO.)",
-        "sort_opt_unit": "ID Unit",
+        "sort_opt_date": "Tarikh Bayar",
+        "sort_opt_receipt": "No. Resit (OR NO.)",
+        "sort_opt_unit": "No. Unit",
         "sort_opt_block": "Blok",
-        "sort_opt_floor": "Tingkat",
-        "sort_opt_out": "Baki Tertunggak",
-        "sort_opt_total": "Jumlah Telah Dibayar",
-        "order_asc": "Menaik (Terkuno / Terendah / A-Z)",
-        "order_desc": "Menurun (Terkini / Tertinggi / Z-A)",
-        "no_monthly_records": "Tiada rekod bayaran direkodkan pada {month} {year}.",
-        "found_logs": "Dijumpai sebanyak **{count}** rekod log bayaran.",
-        "dl_monthly_btn": "📥 Muat Turun Log Kutipan {month} {year} (.xlsx)",
+        "sort_opt_floor": "Aras Tingkat",
+        "sort_opt_out": "Baki Tunggakan",
+        "sort_opt_total": "Jumlah Bayaran",
+        "order_asc": "Menaik (A-Z / Lama ➔ Baru / Terendah)",
+        "order_desc": "Menurun (Z-A / Baru ➔ Lama / Tertinggi)",
+        "no_monthly_records": "Tiada rekod kutipan pada bulan {month} {year}.",
+        "found_logs": "Dijumpai sebanyak **{count}** rekod kutipan.",
+        "dl_monthly_btn": "📥 Muat Turun Rekod Kutipan {month} {year} (.xlsx)",
         "col_logged_date": "Tarikh Direkod",
         
         # Tab 4
-        "tab4_header": "📊 Matriks Bayaran Tahunan & Penjejak Tunggakan",
-        "filter_block": "Tapis Blok",
+        "tab4_header": "📊 Ringkasan Tahunan & Semakan Tunggakan",
+        "filter_block": "Tapis Mengikut Blok",
         "all_blocks": "Semua Blok",
         "search_unit": "🔍 Cari Unit",
         "search_placeholder": "cth. 216, G01, S2",
-        "showing_units_msg": "Memaparkan **{count}** unit sepadan dengan carian/tapisan bagi tahun **{year}**.",
-        "dl_annual_btn": "📥 Muat Turun Ringkasan bagi {block} ({year}) (.xlsx)"
+        "showing_units_msg": "Memaparkan **{count}** unit bagi tahun **{year}**.",
+        "dl_annual_btn": "📥 Muat Turun Ringkasan {block} ({year}) (.xlsx)"
     }
 }
 
@@ -207,8 +223,8 @@ TRANSLATIONS = {
 head_col1, head_col2 = st.columns([4.2, 1.3])
 with head_col2:
     lang_choice = st.selectbox("🌐 Language / Bahasa", ["English", "Bahasa Melayu"], index=0, label_visibility="collapsed")
-lang = "en" if lang_choice == "English" else "ms"
-t = TRANSLATIONS[lang]
+    lang = "en" if lang_choice == "English" else "ms"
+    t = TRANSLATIONS[lang]
 
 with head_col1:
     st.title(t["app_title"])
@@ -660,7 +676,7 @@ with tab_entry:
     # Add horizontal divider
     st.markdown("---")
     # Multi-language section title
-    st.subheader("🛠️ Carian & Pengurusan Rekod Pembayaran" if lang == "ms" else "🛠️ Search & Manage Payment Records")
+    st.subheader(t["recent_entries_title"])
 
     # 3-column control bar for filtering
     ctl_c1, ctl_c2, ctl_c3 = st.columns([2, 1.2, 1.4])
@@ -668,8 +684,8 @@ with tab_entry:
     # 1. Search keyword input
     with ctl_c1:
         search_kw = st.text_input(
-            "🔍 Cari Resit / Unit / Pemungut" if lang == "ms" else "🔍 Search Receipt / Unit / Collector",
-            placeholder="cth. 0006, S2-216, nana" if lang == "ms" else "e.g. 0006, S2-216, nana",
+            t["search_mgmt_label"],
+            placeholder=t["search_mgmt_placeholder"],
             key=f"manage_search_kw_{lang}"
         )
         
@@ -677,7 +693,7 @@ with tab_entry:
     with ctl_c2:
         limit_options = ["5", "10", "20", "50", "Semua" if lang == "ms" else "All"]
         limit_choice = st.selectbox(
-            "Paparkan" if lang == "ms" else "Show",
+            t["show_label"],
             limit_options,
             index=0,
             key=f"manage_limit_choice_{lang}"
@@ -685,19 +701,16 @@ with tab_entry:
         
     # 3. Sorting order dropdown (Ascending / Descending)
     with ctl_c3:
-        sort_opts = [
-            "Urutan menurun (Terkini dahulu)" if lang == "ms" else "Descending (Newest First)",
-            "Urutan Menaik (Terawal dahulu)" if lang == "ms" else "Ascending (Oldest First)"
-        ]
+        sort_opts = [t["opt_desc"], t["opt_asc"]]
         sort_choice = st.selectbox(
-            "Susunan" if lang == "ms" else "Sort Order",
+            t["sort_order_label"],
             sort_opts,
             index=0,
             key=f"manage_sort_choice_{lang}"
         )
 
     # Determine sorting direction from choice
-    is_desc = True if "Descending" in sort_choice or "Urutan menurun" in sort_choice else False
+    is_desc = True if sort_choice == t["opt_desc"] else False
 
     # Query Supabase payments table
     query_builder = supabase.table("payments").select("*").order("created_at", desc=is_desc)
@@ -722,11 +735,7 @@ with tab_entry:
         display_records = filtered_records
 
     # Summary record count
-    st.caption(
-        f"Memaparkan **{len(display_records)}** daripada **{len(filtered_records)}** rekod dijumpai."
-        if lang == "ms" else 
-        f"Showing **{len(display_records)}** of **{len(filtered_records)}** matching records."
-    )
+    st.caption(t["showing_mgmt_caption"].format(shown=len(display_records), total=len(filtered_records)))
 
     # Render interactive record cards
     if display_records:
@@ -743,15 +752,15 @@ with tab_entry:
             with st.expander(card_label):
                 edit_c1, edit_c2, edit_c3, edit_c4 = st.columns(4)
                 with edit_c1:
-                    new_or_val = st.text_input("OR NO.", value=r_or, key=f"edit_or_{idx}_{r_created_at}_{lang}")
+                    new_or_val = st.text_input(t["col_or_no"], value=r_or, key=f"edit_or_{idx}_{r_created_at}_{lang}")
                 with edit_c2:
                     methods = ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"]
                     cur_idx = methods.index(r_method) if r_method in methods else 0
-                    new_meth_val = st.selectbox("Kaedah" if lang == "ms" else "Method", methods, index=cur_idx, key=f"edit_meth_{idx}_{r_created_at}_{lang}")
+                    new_meth_val = st.selectbox(t["pay_method_label"], methods, index=cur_idx, key=f"edit_meth_{idx}_{r_created_at}_{lang}")
                 with edit_c3:
-                    new_amt_val = st.number_input("Jumlah (RM)" if lang == "ms" else "Amount (RM)", value=r_amt, step=5.0, key=f"edit_amt_{idx}_{r_created_at}_{lang}")
+                    new_amt_val = st.number_input(t["col_amount"], value=r_amt, step=5.0, key=f"edit_amt_{idx}_{r_created_at}_{lang}")
                 with edit_c4:
-                    new_col_val = st.text_input("Pemungut" if lang == "ms" else "Collector", value=r_collector, key=f"edit_col_{idx}_{r_created_at}_{lang}")
+                    new_col_val = st.text_input(t["col_collector"], value=r_collector, key=f"edit_col_{idx}_{r_created_at}_{lang}")
                 
                 btn_c1, btn_c2 = st.columns([1, 1])
                 with btn_c1:
@@ -761,7 +770,8 @@ with tab_entry:
                     if st.button(t["delete_record_btn"], key=f"btn_del_{idx}_{r_created_at}_{lang}"):
                         delete_payment_entry(rec)
     else:
-        st.info("Tiada rekod pembayaran dijumpai sepadan dengan carian." if lang == "ms" else "No payment records found matching your query.")
+        st.info(t["no_mgmt_found"])
+
 # ==========================================
 # --- TAB 3: 📅 MONTHLY COLLECTION EXPORT ---
 # ==========================================
