@@ -43,7 +43,7 @@ MONTH_NAMES = [
 # Multi-year selection range (supporting 2019 onwards)
 YEAR_OPTIONS = list(range(2019, 2036))
 
-# Natural, community-friendly language dictionary
+# Natural, friendly everyday language dictionary
 TRANSLATIONS = {
     "en": {
         "app_title": "🏢 Sunway Sinar Maintenance Fee Portal",
@@ -107,7 +107,7 @@ TRANSLATIONS = {
         "select_month": "Select Month",
         "select_year": "Select Year",
         "sort_by": "Sort By",
-        "order_by": "Order",
+        "order_by": "Sort Order",
         "sort_opt_date": "Payment Date",
         "sort_opt_receipt": "Receipt Number (OR NO.)",
         "sort_opt_unit": "Unit ID",
@@ -115,8 +115,8 @@ TRANSLATIONS = {
         "sort_opt_floor": "Floor Level",
         "sort_opt_out": "Outstanding Balance",
         "sort_opt_total": "Total Paid",
-        "order_asc": "Ascending (A-Z / Oldest / Lowest)",
-        "order_desc": "Descending (Z-A / Newest / Highest)",
+        "order_asc": "Ascending (Oldest / Lowest / A-Z)",
+        "order_desc": "Descending (Newest / Highest / Z-A)",
         "no_monthly_records": "No payment records found for {month} {year}.",
         "found_logs": "Found **{count}** payment records.",
         "dl_monthly_btn": "📥 Download {month} {year} Collection Record (.xlsx)",
@@ -183,8 +183,8 @@ TRANSLATIONS = {
         "search_mgmt_placeholder": "cth. 0006, S2-216, Nana",
         "show_label": "Papar",
         "sort_order_label": "Susunan",
-        "opt_desc": "Terkini dahulu (Baru ➔ Lama)",
-        "opt_asc": "Terkuno dahulu (Lama ➔ Baru)",
+        "opt_desc": "Paling Baru Dahulu (Baru ➔ Lama)",
+        "opt_asc": "Paling Lama Dahulu (Lama ➔ Baru)",
         "showing_mgmt_caption": "Memaparkan **{shown}** daripada **{total}** rekod dijumpai.",
         "no_mgmt_found": "Tiada rekod bayaran dijumpai sepadan dengan carian anda.",
         
@@ -193,7 +193,7 @@ TRANSLATIONS = {
         "select_month": "Pilih Bulan",
         "select_year": "Pilih Tahun",
         "sort_by": "Susun Mengikut",
-        "order_by": "Tertib",
+        "order_by": "Susunan",
         "sort_opt_date": "Tarikh Bayar",
         "sort_opt_receipt": "No. Resit (OR NO.)",
         "sort_opt_unit": "No. Unit",
@@ -201,8 +201,8 @@ TRANSLATIONS = {
         "sort_opt_floor": "Aras Tingkat",
         "sort_opt_out": "Baki Tunggakan",
         "sort_opt_total": "Jumlah Bayaran",
-        "order_asc": "Menaik (A-Z / Lama ➔ Baru / Terendah)",
-        "order_desc": "Menurun (Z-A / Baru ➔ Lama / Tertinggi)",
+        "order_asc": "Menaik (Lama ➔ Baru / Rendah ➔ Tinggi / A ➔ Z)",
+        "order_desc": "Menurun (Baru ➔ Lama / Tinggi ➔ Rendah / Z ➔ A)",
         "no_monthly_records": "Tiada rekod kutipan pada bulan {month} {year}.",
         "found_logs": "Dijumpai sebanyak **{count}** rekod kutipan.",
         "dl_monthly_btn": "📥 Muat Turun Rekod Kutipan {month} {year} (.xlsx)",
@@ -699,7 +699,7 @@ with tab_entry:
             key=f"manage_limit_choice_{lang}"
         )
         
-    # 3. Sorting order dropdown (Ascending / Descending)
+    # 3. Sorting order dropdown
     with ctl_c3:
         sort_opts = [t["opt_desc"], t["opt_asc"]]
         sort_choice = st.selectbox(
