@@ -686,8 +686,8 @@ with tab_entry:
     # 3. Sorting order dropdown (Ascending / Descending)
     with ctl_c3:
         sort_opts = [
-            "Menurun / Descending (Terkini / Newest)" if lang == "ms" else "Descending (Newest First)",
-            "Menaik / Ascending (Terkuno / Oldest)" if lang == "ms" else "Ascending (Oldest First)"
+            "Urutan menurun (Terkini dahulu)" if lang == "ms" else "Descending (Newest First)",
+            "Urutan Menaik (Terawal dahulu)" if lang == "ms" else "Ascending (Oldest First)"
         ]
         sort_choice = st.selectbox(
             "Susunan" if lang == "ms" else "Sort Order",
@@ -697,7 +697,7 @@ with tab_entry:
         )
 
     # Determine sorting direction from choice
-    is_desc = True if "Descending" in sort_choice or "Menurun" in sort_choice else False
+    is_desc = True if "Descending" in sort_choice or "Urutan menurun" in sort_choice else False
 
     # Query Supabase payments table
     query_builder = supabase.table("payments").select("*").order("created_at", desc=is_desc)
