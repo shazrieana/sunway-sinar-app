@@ -40,8 +40,8 @@ MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
 ]
-# Multi-year selection range
-YEAR_OPTIONS = list(range(2023, 2036))
+# Multi-year selection range (supporting 2019 onwards)
+YEAR_OPTIONS = list(range(2019, 2036))
 
 # Comprehensive language dictionary for English and Bahasa Melayu
 TRANSLATIONS = {
@@ -90,8 +90,9 @@ TRANSLATIONS = {
         "amount_received_label": "Total Amount Received (RM)",
         "submit_btn": "Submit Payment Entry",
         "payment_success": "Payment of RM {amt:.2f} recorded for {month} {year} on {unit}!",
-        "recent_entries_title": "🕒 Recently Logged Collections (Latest 5)",
-        "col_logged_date": "Logged Date",
+        "recent_entries_title": "🛠️ Manage / Edit Recent Entries (Latest 5)",
+        "save_changes_btn": "💾 Save Changes",
+        "delete_record_btn": "🗑️ Delete Record",
         
         # Tab 3
         "tab3_header": "📅 Monthly Collection Logs",
@@ -111,6 +112,7 @@ TRANSLATIONS = {
         "no_monthly_records": "No payments were logged in {month} {year}.",
         "found_logs": "Found **{count}** payment logs.",
         "dl_monthly_btn": "📥 Download {month} {year} Collection Log (.xlsx)",
+        "col_logged_date": "Logged Date",
         
         # Tab 4
         "tab4_header": "📊 Annual Payment Matrix & Outstanding Tracker",
@@ -166,8 +168,9 @@ TRANSLATIONS = {
         "amount_received_label": "Jumlah Diterima (RM)",
         "submit_btn": "Hantar Rekod Bayaran",
         "payment_success": "Bayaran sebanyak RM {amt:.2f} berjaya direkodkan untuk {month} {year} pada unit {unit}!",
-        "recent_entries_title": "🕒 Kutipan Terkini Direkod (5 Terakhir)",
-        "col_logged_date": "Tarikh Direkod",
+        "recent_entries_title": "🛠️ Urus / Padam Rekod Terkini (5 Terakhir)",
+        "save_changes_btn": "💾 Simpan Perubahan",
+        "delete_record_btn": "🗑️ Padam Rekod",
         
         # Tab 3
         "tab3_header": "📅 Log Kutipan Bulanan",
@@ -187,6 +190,7 @@ TRANSLATIONS = {
         "no_monthly_records": "Tiada rekod bayaran direkodkan pada {month} {year}.",
         "found_logs": "Dijumpai sebanyak **{count}** rekod log bayaran.",
         "dl_monthly_btn": "📥 Muat Turun Log Kutipan {month} {year} (.xlsx)",
+        "col_logged_date": "Tarikh Direkod",
         
         # Tab 4
         "tab4_header": "📊 Matriks Bayaran Tahunan & Penjejak Tunggakan",
@@ -216,6 +220,32 @@ def get_unit_payments(unit_id):
     # Fetch all payment records belonging to a specific unit
     response = supabase.table("payments").select("*").eq("unit_id", unit_id).order("created_at", desc=True).execute()
     return response.data
+
+def delete_payment_entry(rec):
+    # Helper function to delete an incorrect payment record
+    query = supabase.table("payments").delete()
+    if "id" in rec and rec["id"] is not None:
+        query = query.eq("id", rec["id"])
+    else:
+        query = query.eq("unit_id", rec["unit_id"]).eq("created_at", rec["created_at"])
+    query.execute()
+    st.rerun()
+
+def update_payment_entry(rec, new_or, new_collector, new_method, new_amount):
+    # Helper function to update existing payment record details
+    payload = {
+        "or_no": new_or,
+        "collector_name": new_collector,
+        "payment_method": new_method,
+        "amount_paid": new_amount
+    }
+    query = supabase.table("payments").update(payload)
+    if "id" in rec and rec["id"] is not None:
+        query = query.eq("id", rec["id"])
+    else:
+        query = query.eq("unit_id", rec["unit_id"]).eq("created_at", rec["created_at"])
+    query.execute()
+    st.rerun()
 
 def calculate_monthly_balances(records, target_year):
     # If no records exist, return zeros for all 12 months
@@ -439,7 +469,6 @@ def generate_annual_excel(matrix_df, year):
     buffer.seek(0)
     return buffer
 
-# Helper function to get list of unpaid or partially paid months for a specific year
 def get_unpaid_months_for_year(unit_id, target_year):
     records = get_unit_payments(unit_id)
     balances = calculate_monthly_balances(records, target_year)
@@ -449,21 +478,6 @@ def get_unpaid_months_for_year(unit_id, target_year):
         if balances.get(m_key, 0.0) < MONTHLY_FEE:
             available_months.append(MONTH_NAMES[m - 1])
     return available_months
-
-# Helper function to delete an incorrect payment record by database ID
-def delete_payment_entry(record_id):
-    supabase.table("payments").delete().eq("id", record_id).execute()
-    st.rerun()
-
-# Helper function to update existing payment record details
-def update_payment_entry(record_id, new_or, new_collector, new_method, new_amount):
-    supabase.table("payments").update({
-        "or_no": new_or,
-        "collector_name": new_collector,
-        "payment_method": new_method,
-        "amount_paid": new_amount
-    }).eq("id", record_id).execute()
-    st.rerun()
 
 # ==========================================
 # 3. FOUR INTERFACE TABS
@@ -523,7 +537,7 @@ with tab_status:
         )
         
         st.write("")
-        # Display monthly status indicators (Mobile & Desktop Chronological Fix)
+        # Display monthly status indicators
         view_year_months = [datetime(s_view_year, m, 1) for m in range(1, 13)]
         
         # Row 1: January to June
@@ -643,61 +657,43 @@ with tab_entry:
                 st.success(t["payment_success"].format(amt=amount, month=start_month_name, year=entry_year_val, unit=selected_unit_e))
                 st.rerun()
 
-        #st.markdown("---")
-        # Recent Entries Feed (Last 5 recorded payments)
-        #st.subheader(t["recent_entries_title"])
-        #recent_resp = supabase.table("payments").select("*").order("created_at", desc=True).limit(5).execute()
-        #if recent_resp.data:
-            #df_recent = pd.DataFrame(recent_resp.data)[["created_at", "or_no", "unit_id", "collector_name", "payment_method", "amount_paid", "start_month", "end_month"]]
-            #df_recent.columns = [
-                #t["col_logged_date"], t["col_or_no"], "Unit ID", 
-                #t["col_collector"], t["col_method"], t["col_amount"], 
-                #t["col_start"], t["col_end"]
-            #]
+    st.markdown("---")
+    # Interactive Recent Entries Management (Edit & Delete for Committee)
+    st.subheader(t["recent_entries_title"])
+    
+    recent_resp = supabase.table("payments").select("*").order("created_at", desc=True).limit(5).execute()
+    
+    if recent_resp.data:
+        for idx, rec in enumerate(recent_resp.data):
+            r_unit = rec.get("unit_id", "-")
+            r_created_at = rec.get("created_at", "")
+            r_date = str(r_created_at)[:16].replace("T", " ")
+            r_or = rec.get("or_no", "-")
+            r_amt = float(rec.get("amount_paid", 0.0))
+            r_method = rec.get("payment_method", "CASH")
+            r_collector = rec.get("collector_name", "-")
             
-            #df_recent[t["col_logged_date"]] = pd.to_datetime(df_recent[t["col_logged_date"]]).dt.strftime("%Y-%m-%d %H:%M")
-            #df_recent[t["col_amount"]] = df_recent[t["col_amount"]].apply(lambda x: f"RM {float(x):.2f}")
-            #st.dataframe(df_recent, use_container_width=True)
-        st.markdown("---")
-        # Interactive Recent Entries Management (Edit & Delete for Committee)
-        st.subheader("🛠️ Urus / Padam Rekod Terkini (5 Terakhir)" if lang == "ms" else "🛠️ Manage / Edit Recent Entries (Latest 5)")
-        
-        # Fetch the latest 5 records including the unique database ID column
-        recent_resp = supabase.table("payments").select("*").order("created_at", desc=True).limit(5).execute()
-        
-        if recent_resp.data:
-            for rec in recent_resp.data:
-                r_id = rec["id"]
-                r_unit = rec["unit_id"]
-                r_date = str(rec["created_at"])[:16].replace("T", " ")
-                r_or = rec.get("or_no", "-")
-                r_amt = float(rec["amount_paid"])
-                r_method = rec.get("payment_method", "CASH")
-                r_collector = rec.get("collector_name", "-")
+            card_label = f"📍 {r_unit} | Resit: {r_or} | RM {r_amt:.2f} ({r_date})" if lang == "ms" else f"📍 {r_unit} | Receipt: {r_or} | RM {r_amt:.2f} ({r_date})"
+            with st.expander(card_label):
+                edit_c1, edit_c2, edit_c3, edit_c4 = st.columns(4)
+                with edit_c1:
+                    new_or_val = st.text_input("OR NO.", value=r_or, key=f"edit_or_{idx}_{r_created_at}")
+                with edit_c2:
+                    methods = ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"]
+                    cur_idx = methods.index(r_method) if r_method in methods else 0
+                    new_meth_val = st.selectbox("Kaedah" if lang == "ms" else "Method", methods, index=cur_idx, key=f"edit_meth_{idx}_{r_created_at}")
+                with edit_c3:
+                    new_amt_val = st.number_input("Jumlah (RM)" if lang == "ms" else "Amount (RM)", value=r_amt, step=5.0, key=f"edit_amt_{idx}_{r_created_at}")
+                with edit_c4:
+                    new_col_val = st.text_input("Pemungut" if lang == "ms" else "Collector", value=r_collector, key=f"edit_col_{idx}_{r_created_at}")
                 
-                # Expandable card for each transaction
-                card_label = f"📍 {r_unit} | Resit: {r_or} | RM {r_amt:.2f} ({r_date})" if lang == "ms" else f"📍 {r_unit} | Receipt: {r_or} | RM {r_amt:.2f} ({r_date})"
-                with st.expander(card_label):
-                    edit_c1, edit_c2, edit_c3, edit_c4 = st.columns(4)
-                    with edit_c1:
-                        new_or_val = st.text_input("OR NO.", value=r_or, key=f"edit_or_{r_id}")
-                    with edit_c2:
-                        methods = ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"]
-                        cur_idx = methods.index(r_method) if r_method in methods else 0
-                        new_meth_val = st.selectbox("Kaedah" if lang == "ms" else "Method", methods, index=cur_idx, key=f"edit_meth_{r_id}")
-                    with edit_c3:
-                        new_amt_val = st.number_input("Jumlah (RM)" if lang == "ms" else "Amount (RM)", value=r_amt, step=5.0, key=f"edit_amt_{r_id}")
-                    with edit_c4:
-                        new_col_val = st.text_input("Pemungut" if lang == "ms" else "Collector", value=r_collector, key=f"edit_col_{r_id}")
-                    
-                    # Action buttons: Save Changes & Delete Entry
-                    btn_c1, btn_c2 = st.columns([1, 1])
-                    with btn_c1:
-                        if st.button("💾 Simpan Perubahan" if lang == "ms" else "💾 Save Changes", key=f"btn_save_{r_id}", type="primary"):
-                            update_payment_entry(r_id, new_or_val, new_col_val, new_meth_val, new_amt_val)
-                    with btn_c2:
-                        if st.button("🗑️ Padam Rekod" if lang == "ms" else "🗑️ Delete Record", key=f"btn_del_{r_id}"):
-                            delete_payment_entry(r_id)
+                btn_c1, btn_c2 = st.columns([1, 1])
+                with btn_c1:
+                    if st.button(t["save_changes_btn"], key=f"btn_save_{idx}_{r_created_at}", type="primary"):
+                        update_payment_entry(rec, new_or_val, new_col_val, new_meth_val, new_amt_val)
+                with btn_c2:
+                    if st.button(t["delete_record_btn"], key=f"btn_del_{idx}_{r_created_at}"):
+                        delete_payment_entry(rec)
 
 # ==========================================
 # --- TAB 3: 📅 MONTHLY COLLECTION EXPORT ---
@@ -707,7 +703,6 @@ with tab_monthly:
     
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     with m_col1:
-        # Display localized month names
         selected_month_num = st.selectbox(
             t["select_month"], 
             list(range(1, 13)), 
@@ -732,10 +727,9 @@ with tab_monthly:
 
     records = supabase.table("payments").select("*").gte("created_at", m_start_str).lt("created_at", m_end_str).execute().data
     
-    # Get localized month name for text output
     display_month_name = datetime(2024, selected_month_num, 1).strftime("%B") if lang == "en" else [
         "Januari", "Februari", "Mac", "April", "Mei", "Jun", 
-        "Julai", "Ogos", "September", "Oktober", "Disember"
+        "Julai", "Ogos", "September", "Oktober", "November", "Disember"
     ][selected_month_num - 1]
 
     if len(records) == 0:
@@ -745,7 +739,6 @@ with tab_monthly:
         df_logs = pd.DataFrame(records)[["created_at", "or_no", "unit_id", "collector_name", "payment_method", "amount_paid", "start_month", "end_month"]]
         df_logs["Block"] = df_logs["unit_id"].apply(lambda x: x.split("-")[0] if "-" in str(x) else "")
         
-        # Sort column dynamic mapping
         sort_map = {
             t["sort_opt_date"]: "created_at",
             t["sort_opt_receipt"]: "or_no",
@@ -756,7 +749,6 @@ with tab_monthly:
         is_asc = True if sort_order_m == t["order_asc"] else False
         df_logs = df_logs.sort_values(by=sort_map[sort_by_m], ascending=is_asc)
         
-        # Apply clean translated headers to logs table
         df_logs_display = df_logs.drop(columns=["Block"]).copy()
         df_logs_display.columns = [
             t["col_logged_date"], t["col_or_no"], "Unit ID", 
@@ -764,7 +756,6 @@ with tab_monthly:
             t["col_start"], t["col_end"]
         ]
         
-        # Format Date and Amount columns
         df_logs_display[t["col_logged_date"]] = pd.to_datetime(df_logs_display[t["col_logged_date"]]).dt.strftime("%Y-%m-%d %H:%M")
         df_logs_display[t["col_amount"]] = df_logs_display[t["col_amount"]].apply(lambda x: f"RM {float(x):.2f}")
         
