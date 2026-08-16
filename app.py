@@ -29,8 +29,6 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Set page configuration for wide screen layout
 st.set_page_config(page_title="Sunway Sinar Maintenance Portal", layout="wide")
-# Set application header title
-st.title("Sunway Sinar Maintenance Fee Management System")
 
 # Define standard monthly maintenance fee amount
 MONTHLY_FEE = 35.00
@@ -44,6 +42,63 @@ MONTH_NAMES = [
 ]
 # Multi-year selection range
 YEAR_OPTIONS = list(range(2023, 2036))
+
+# Language dictionary for English and Bahasa Melayu
+TRANSLATIONS = {
+    "en": {
+        "app_title": "🏢 Sunway Sinar Maintenance Fee Portal",
+        "tab1_title": "🔍 Payment Status",
+        "tab2_title": "📝 Record Payment",
+        "tab3_title": "📅 Monthly Collection",
+        "tab4_title": "📊 Annual Summary",
+        "select_block": "Select Block",
+        "select_floor": "Select Floor Level",
+        "select_unit": "Select Unit Number",
+        "ground_floor": "Ground Floor",
+        "level": "Level",
+        "annual_fee_req": "Annual Fee Required",
+        "total_paid": "Total Paid",
+        "outstanding_bal": "Outstanding Balance",
+        "unpaid": "Unpaid",
+        "submit_btn": "Submit Payment Entry",
+        "or_no_label": "Official Receipt (OR NO.)",
+        "pay_method_label": "Payment Method",
+        "amount_label": "Total Amount Received (RM)",
+        "collector_label": "Collector Name",
+        "history_title": "🧾 Payment Receipt History",
+        "no_history": "No payment records found for this unit.",
+    },
+    "ms": {
+        "app_title": "🏢 Portal Yuran Penyelenggaraan Sunway Sinar",
+        "tab1_title": "🔍 Status Bayaran",
+        "tab2_title": "📝 Rekod Bayaran",
+        "tab3_title": "📅 Kutipan Bulanan",
+        "tab4_title": "📊 Ringkasan Tahunan",
+        "select_block": "Pilih Blok",
+        "select_floor": "Pilih Tingkat",
+        "select_unit": "Pilih Nombor Unit",
+        "ground_floor": "Tingkat Bawah",
+        "level": "Tingkat",
+        "annual_fee_req": "Jumlah Yuran Tahunan",
+        "total_paid": "Jumlah Telah Dibayar",
+        "outstanding_bal": "Baki Tertunggak",
+        "unpaid": "Belum Bayar",
+        "submit_btn": "Hantar Rekod Bayaran",
+        "or_no_label": "No. Resit Rasmi (OR NO.)",
+        "pay_method_label": "Kaedah Pembayaran",
+        "amount_label": "Jumlah Diterima (RM)",
+        "collector_label": "Nama Pemungut",
+        "history_title": "🧾 Sejarah Resit Pembayaran",
+        "no_history": "Tiada rekod bayaran dijumpai untuk unit ini.",
+    }
+}
+# Sidebar Language Switcher
+lang_choice = st.sidebar.radio("🌐 Language / Bahasa", ["Bahasa Melayu", "English"], index=0)
+lang = "ms" if lang_choice == "Bahasa Melayu" else "en"
+t = TRANSLATIONS[lang]
+
+# Set application header title using the selected language
+st.title(t["app_title"])
 
 # ==========================================
 # 2. HELPER CALCULATION & EXPORT FUNCTIONS
@@ -330,10 +385,10 @@ def get_unpaid_months_for_year(unit_id, target_year):
 # ==========================================
 # Create four dedicated tabs in Streamlit
 tab_status, tab_entry, tab_monthly, tab_annual = st.tabs([
-    "🔍 Payment Status", 
-    "📝 Record Payment", 
-    "📅 Monthly Collection Exports", 
-    "📊 Annual Payment Summary"
+    t["tab1_title"],
+    t["tab2_title"],
+    t["tab3_title"],
+    t["tab4_title"]
 ])
 
 # ==========================================
@@ -346,7 +401,7 @@ with tab_status:
     # Unit selection controls (without collector input)
     u_col1, u_col2, u_col3, u_col4 = st.columns(4)
     with u_col1:
-        s_block = st.selectbox("Select Block", ["S1", "S2", "S3"], key="status_block")
+        s_block = st.selectbox(t["select_block"], ["S1", "S2", "S3"], key="status_block")
     with u_col2:
         s_floor = st.selectbox("Select Floor Level", [0, 1, 2, 3, 4], format_func=lambda x: "Ground Floor" if x == 0 else f"Level {x}", key="status_floor")
     with u_col3:
@@ -436,7 +491,7 @@ with tab_entry:
     # Committee collector and unit selection
     e_col1, e_col2, e_col3, e_col4 = st.columns(4)
     with e_col1:
-        e_block = st.selectbox("Select Block", ["S1", "S2", "S3"], key="entry_block")
+        s_block = st.selectbox(t["select_block"], ["S1", "S2", "S3"], key="status_block")
     with e_col2:
         e_floor = st.selectbox("Select Floor Level", [0, 1, 2, 3, 4], format_func=lambda x: "Ground Floor" if x == 0 else f"Level {x}", key="entry_floor")
     with e_col3:
