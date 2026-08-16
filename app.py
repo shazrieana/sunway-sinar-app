@@ -658,8 +658,7 @@ with tab_entry:
             #df_recent[t["col_logged_date"]] = pd.to_datetime(df_recent[t["col_logged_date"]]).dt.strftime("%Y-%m-%d %H:%M")
             #df_recent[t["col_amount"]] = df_recent[t["col_amount"]].apply(lambda x: f"RM {float(x):.2f}")
             #st.dataframe(df_recent, use_container_width=True)
-
-st.markdown("---")
+        st.markdown("---")
         # Interactive Recent Entries Management (Edit & Delete for Committee)
         st.subheader("🛠️ Urus / Padam Rekod Terkini (5 Terakhir)" if lang == "ms" else "🛠️ Manage / Edit Recent Entries (Latest 5)")
         
