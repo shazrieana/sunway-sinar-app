@@ -30,6 +30,25 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # Set page configuration for wide screen layout
 st.set_page_config(page_title="Sunway Sinar Maintenance Portal", layout="wide")
 
+# CSS snippet to completely hide the top header, toolbar, and footer
+hide_streamlit_style = """
+<style>
+    /* Hide top navigation toolbar and menu */
+    header {visibility: hidden !important;}
+    [data-testid="stToolbar"] {visibility: hidden !important; display: none !important;}
+    #MainMenu {visibility: hidden !important;}
+    
+    /* Hide Streamlit footer */
+    footer {visibility: hidden !important;}
+    
+    /* Reduce top padding to make UI seamless */
+    .block-container {
+        padding-top: 1.5rem !important;
+    }
+</style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 # Define standard monthly maintenance fee amount
 MONTHLY_FEE = 35.00
 # Define annual total expected fee (12 months * RM 35.00 = RM 420.00)
