@@ -42,6 +42,8 @@ MONTH_NAMES = [
 ]
 # Multi-year selection range (supporting 2019 onwards)
 YEAR_OPTIONS = list(range(2019, 2036))
+# Get active calendar year dynamically
+CURRENT_YEAR = datetime.now().year
 
 # Natural, friendly everyday language dictionary
 TRANSLATIONS = {
@@ -528,7 +530,7 @@ with tab_status:
         unit_list = [u["unit_id"] for u in units_resp.data] if units_resp.data else []
         s_unit = st.selectbox(t["select_unit"], unit_list, key="status_unit") if unit_list else None
     with u_col4:
-        s_view_year = st.selectbox(t["view_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="status_year")
+        s_view_year = st.selectbox(t["view_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(CURRENT_YEAR), key="status_year")
 
     st.markdown("---")
     
@@ -634,7 +636,7 @@ with tab_entry:
         with r1_col1:
             or_no = st.text_input(t["col_or_no"], placeholder=t["or_no_placeholder"], key=f"entry_or_no_{selected_unit_e}")
         with r1_col2:
-            entry_year_val = st.selectbox(t["for_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key=f"entry_yr_{selected_unit_e}")
+            entry_year_val = st.selectbox(t["for_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(CURRENT_YEAR), key=f"entry_yr_{selected_unit_e}")
         
         # Calculate only unpaid months for selected year
         unpaid_months = get_unpaid_months_for_year(selected_unit_e, entry_year_val)
@@ -790,7 +792,7 @@ with tab_monthly:
             key="m_month"
         )
     with m_col2:
-        selected_year = st.selectbox(t["select_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="m_year")
+        selected_year = st.selectbox(t["select_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(CURRENT_YEAR), key="m_year")
     with m_col3:
         sort_opts_m = [t["sort_opt_date"], t["sort_opt_receipt"], t["sort_opt_unit"], t["sort_opt_block"]]
         sort_by_m = st.selectbox(t["sort_by"], sort_opts_m, key="m_sort")
@@ -856,7 +858,7 @@ with tab_annual:
     
     f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 1.5, 1.5, 1.5])
     with f_col1:
-        ann_year = st.selectbox(t["view_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(2024), key="annual_year")
+        ann_year = st.selectbox(t["view_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(CURRENT_YEAR), key="annual_year")
     with f_col2:
         block_options = [t["all_blocks"], "Block S1", "Block S2", "Block S3"]
         block_filter = st.selectbox(t["filter_block"], block_options, key="ann_block_filter")
