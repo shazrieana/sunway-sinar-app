@@ -32,6 +32,7 @@ COMMITTEE_PIN = str(st.secrets.get("COMMITTEE_PIN", "8899"))
 
 # Initialize session state for committee login
 if "committee_authenticated" not in st.session_state:
+    # Set initial authentication status to False
     st.session_state["committee_authenticated"] = False
 
 # Set page configuration for wide screen layout
@@ -243,11 +244,15 @@ TRANSLATIONS = {
 # Top Header Layout: Title on Left, Compact Language Toggle on Right
 head_col1, head_col2 = st.columns([4.2, 1.3])
 with head_col2:
+    # Select language choice
     lang_choice = st.selectbox("🌐 Language / Bahasa", ["English", "Bahasa Melayu"], index=0, label_visibility="collapsed")
+    # Set active language code
     lang = "en" if lang_choice == "English" else "ms"
+    # Assign active translation mapping
     t = TRANSLATIONS[lang]
 
 with head_col1:
+    # Render main header title
     st.title(t["app_title"])
 
 # ==========================================
@@ -525,29 +530,38 @@ def verify_committee_access(tab_name_key):
         with col_btn:
             # Button to lock all tabs simultaneously
             if st.button("🔒 " + ("Kunci Semula" if lang == "ms" else "Lock / Log Out"), key=f"btn_logout_{tab_name_key}", use_container_width=True):
+                # Reset global session state
                 st.session_state["committee_authenticated"] = False
+                # Refresh page to apply lock across all tabs
                 st.rerun()
         return True
 
     # Centered PIN card layout
     spacer_left, center_col, spacer_right = st.columns([1, 1.2, 1])
     with center_col:
-        st.warning("🔒 " + ("Bahagian ini terhad untuk Ahli Jawatankuasa (AJK) sahaja." if lang == "ms" else "This section is restricted to resident committee members."))
+        # Display restriction warning notice inside the card
+        st.warning(t["lock_warning"])
         
+        # Centered password input field
         pin_input = st.text_input(
-            "Masukkan PIN AJK" if lang == "ms" else "Enter Committee PIN to Unlock", 
+            t["pin_placeholder"], 
             type="password", 
             key=f"auth_pin_input_{tab_name_key}_{lang}"
         )
         
-        if st.button("🔓 " + ("Buka Kunci" if lang == "ms" else "Unlock Access"), type="primary", key=f"btn_unlock_pin_{tab_name_key}_{lang}", use_container_width=True):
+        # Centered unlock button placed directly underneath the input box
+        if st.button(t["unlock_btn"], type="primary", key=f"btn_unlock_pin_{tab_name_key}_{lang}", use_container_width=True):
+            # Validate input PIN against secret configuration
             if pin_input.strip() == COMMITTEE_PIN.strip():
                 # Shared global state: Unlocks Tabs 2, 3, and 4 simultaneously
                 st.session_state["committee_authenticated"] = True
-                st.success("✅ " + ("PIN Sah! Membuka akses..." if lang == "ms" else "PIN Verified! Unlocking access..."))
+                # Display success message
+                st.success(t["pin_success"])
+                # Rerun application to render unlocked content
                 st.rerun()
             else:
-                st.error("❌ " + ("PIN salah. Sila hubungi pihak pengurusan." if lang == "ms" else "Incorrect PIN. Please contact the management committee."))
+                # Display error alert on invalid PIN entry
+                st.error(t["pin_error"])
                 
     return False
 
@@ -662,349 +676,343 @@ with tab_status:
 # ==========================================
 with tab_entry:
     st.header(t["tab2_header"])
-    if not verify_committee_access("tab2"):
-        st.stop()
-    
-    # Committee collector and unit selection
-    e_col1, e_col2, e_col3, e_col4 = st.columns(4)
-    with e_col1:
-        e_block = st.selectbox(t["select_block"], ["S1", "S2", "S3"], key="entry_block")
-    with e_col2:
-        e_floor = st.selectbox(
-            t["select_floor"], 
-            [0, 1, 2, 3, 4], 
-            format_func=lambda x: t["ground_floor"] if x == 0 else f"{t['level']} {x}", 
-            key="entry_floor"
-        )
-    with e_col3:
-        units_resp_e = supabase.table("units").select("unit_id").eq("block", e_block).eq("floor_level", e_floor).execute()
-        unit_list_e = [u["unit_id"] for u in units_resp_e.data] if units_resp_e.data else []
-        selected_unit_e = st.selectbox(t["select_unit"], unit_list_e, key="entry_unit") if unit_list_e else None
-    with e_col4:
-        collector = st.text_input(t["collector_name_label"], value=t["collector_default"], key="entry_collector")
+    if verify_committee_access("tab2"):
+        # Committee collector and unit selection
+        e_col1, e_col2, e_col3, e_col4 = st.columns(4)
+        with e_col1:
+            e_block = st.selectbox(t["select_block"], ["S1", "S2", "S3"], key="entry_block")
+        with e_col2:
+            e_floor = st.selectbox(
+                t["select_floor"], 
+                [0, 1, 2, 3, 4], 
+                format_func=lambda x: t["ground_floor"] if x == 0 else f"{t['level']} {x}", 
+                key="entry_floor"
+            )
+        with e_col3:
+            units_resp_e = supabase.table("units").select("unit_id").eq("block", e_block).eq("floor_level", e_floor).execute()
+            unit_list_e = [u["unit_id"] for u in units_resp_e.data] if units_resp_e.data else []
+            selected_unit_e = st.selectbox(t["select_unit"], unit_list_e, key="entry_unit") if unit_list_e else None
+        with e_col4:
+            collector = st.text_input(t["collector_name_label"], value=t["collector_default"], key="entry_collector")
 
-    st.markdown("---")
-    if selected_unit_e:
-        st.subheader(f"{t['new_entry_for']}: {selected_unit_e}")
-        
-        # Row 1: Receipt Number (Left) | Target Year & Available Unpaid Months (Right)
-        r1_col1, r1_col2, r1_col3 = st.columns([2, 1, 1])
-        with r1_col1:
-            or_no = st.text_input(t["col_or_no"], placeholder=t["or_no_placeholder"], key=f"entry_or_no_{selected_unit_e}")
-        with r1_col2:
-            entry_year_val = st.selectbox(t["for_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(CURRENT_YEAR), key=f"entry_yr_{selected_unit_e}")
-        
-        # Calculate only unpaid months for selected year
-        unpaid_months = get_unpaid_months_for_year(selected_unit_e, entry_year_val)
-        
-        with r1_col3:
-            if unpaid_months:
-                start_month_name = st.selectbox(t["unpaid_month_label"], unpaid_months, index=0, key=f"entry_sm_{selected_unit_e}_{entry_year_val}")
-            else:
-                st.selectbox(t["unpaid_month_label"], [t["fully_settled"]], disabled=True, key=f"entry_sm_disabled_{selected_unit_e}")
-                start_month_name = None
-
-        if not unpaid_months:
-            st.success(t["all_paid_msg"])
-        else:
-            # Row 2: Payment Method (Left) | Amount Received (Right)
-            r2_col1, r2_col2 = st.columns([2, 2])
-            with r2_col1:
-                payment_method = st.selectbox(t["pay_method_label"], ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"], key=f"entry_method_{selected_unit_e}")
-            with r2_col2:
-                amount = st.number_input(t["amount_received_label"], min_value=0.0, step=5.0, value=35.0, key=f"entry_amount_{selected_unit_e}")
-
-            start_m_idx = MONTH_NAMES.index(start_month_name) + 1
-            start_m = datetime(entry_year_val, start_m_idx, 1)
-
-            if st.button(t["submit_btn"], type="primary"):
-                payment_payload = {
-                    "unit_id": selected_unit_e,
-                    "or_no": or_no,
-                    "collector_name": collector,
-                    "payment_method": payment_method,
-                    "amount_paid": amount,
-                    "start_month": start_m.strftime("%Y-%m-%d"),
-                    "end_month": start_m.strftime("%Y-%m-%d")
-                }
-                supabase.table("payments").insert(payment_payload).execute()
-                st.success(t["payment_success"].format(amt=amount, month=start_month_name, year=entry_year_val, unit=selected_unit_e))
-                st.rerun()
-
-    # Add horizontal divider
-    st.markdown("---")
-    # Multi-language section title
-    st.subheader(t["recent_entries_title"])
-
-    # 3-column control bar for filtering
-    ctl_c1, ctl_c2, ctl_c3 = st.columns([2, 1.2, 1.4])
-    
-    # 1. Search keyword input
-    with ctl_c1:
-        search_kw = st.text_input(
-            t["search_mgmt_label"],
-            placeholder=t["search_mgmt_placeholder"],
-            key=f"manage_search_kw_{lang}"
-        )
-        
-    # 2. Row limit dropdown
-    with ctl_c2:
-        limit_options = ["5", "10", "20", "50", "Semua" if lang == "ms" else "All"]
-        limit_choice = st.selectbox(
-            t["show_label"],
-            limit_options,
-            index=0,
-            key=f"manage_limit_choice_{lang}"
-        )
-        
-    # 3. Sorting order dropdown
-    with ctl_c3:
-        sort_opts = [t["opt_desc"], t["opt_asc"]]
-        sort_choice = st.selectbox(
-            t["sort_order_label"],
-            sort_opts,
-            index=0,
-            key=f"manage_sort_choice_{lang}"
-        )
-
-    # Determine sorting direction from choice
-    is_desc = True if sort_choice == t["opt_desc"] else False
-
-    # Query Supabase payments table
-    query_builder = supabase.table("payments").select("*").order("created_at", desc=is_desc)
-    all_mgmt_data = query_builder.execute().data or []
-
-    # Filter payment records based on search query
-    if search_kw.strip():
-        q_term = search_kw.strip().lower()
-        filtered_records = [
-            r for r in all_mgmt_data 
-            if q_term in str(r.get("or_no", "")).lower() 
-            or q_term in str(r.get("unit_id", "")).lower() 
-            or q_term in str(r.get("collector_name", "")).lower()
-        ]
-    else:
-        filtered_records = all_mgmt_data
-
-    # Apply row limit
-    if limit_choice not in ["Semua", "All"]:
-        display_records = filtered_records[:int(limit_choice)]
-    else:
-        display_records = filtered_records
-
-    # Summary record count
-    st.caption(t["showing_mgmt_caption"].format(shown=len(display_records), total=len(filtered_records)))
-
-    # Render interactive record cards
-    if display_records:
-        for idx, rec in enumerate(display_records):
-            r_unit = rec.get("unit_id", "-")
-            r_created_at = rec.get("created_at", "")
-            r_date = str(r_created_at)[:16].replace("T", " ")
-            r_or = rec.get("or_no", "-")
-            r_amt = float(rec.get("amount_paid", 0.0))
-            r_method = rec.get("payment_method", "CASH")
-            r_collector = rec.get("collector_name", "-")
+        st.markdown("---")
+        if selected_unit_e:
+            st.subheader(f"{t['new_entry_for']}: {selected_unit_e}")
             
-            card_label = f"📍 {r_unit} | Resit: {r_or} | RM {r_amt:.2f} ({r_date})" if lang == "ms" else f"📍 {r_unit} | Receipt: {r_or} | RM {r_amt:.2f} ({r_date})"
-            with st.expander(card_label):
-                edit_c1, edit_c2, edit_c3, edit_c4 = st.columns(4)
-                with edit_c1:
-                    new_or_val = st.text_input(t["col_or_no"], value=r_or, key=f"edit_or_{idx}_{r_created_at}_{lang}")
-                with edit_c2:
-                    methods = ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"]
-                    cur_idx = methods.index(r_method) if r_method in methods else 0
-                    new_meth_val = st.selectbox(t["pay_method_label"], methods, index=cur_idx, key=f"edit_meth_{idx}_{r_created_at}_{lang}")
-                with edit_c3:
-                    new_amt_val = st.number_input(t["col_amount"], value=r_amt, step=5.0, key=f"edit_amt_{idx}_{r_created_at}_{lang}")
-                with edit_c4:
-                    new_col_val = st.text_input(t["col_collector"], value=r_collector, key=f"edit_col_{idx}_{r_created_at}_{lang}")
+            # Row 1: Receipt Number (Left) | Target Year & Available Unpaid Months (Right)
+            r1_col1, r1_col2, r1_col3 = st.columns([2, 1, 1])
+            with r1_col1:
+                or_no = st.text_input(t["col_or_no"], placeholder=t["or_no_placeholder"], key=f"entry_or_no_{selected_unit_e}")
+            with r1_col2:
+                entry_year_val = st.selectbox(t["for_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(CURRENT_YEAR), key=f"entry_yr_{selected_unit_e}")
+            
+            # Calculate only unpaid months for selected year
+            unpaid_months = get_unpaid_months_for_year(selected_unit_e, entry_year_val)
+            
+            with r1_col3:
+                if unpaid_months:
+                    start_month_name = st.selectbox(t["unpaid_month_label"], unpaid_months, index=0, key=f"entry_sm_{selected_unit_e}_{entry_year_val}")
+                else:
+                    st.selectbox(t["unpaid_month_label"], [t["fully_settled"]], disabled=True, key=f"entry_sm_disabled_{selected_unit_e}")
+                    start_month_name = None
+
+            if not unpaid_months:
+                st.success(t["all_paid_msg"])
+            else:
+                # Row 2: Payment Method (Left) | Amount Received (Right)
+                r2_col1, r2_col2 = st.columns([2, 2])
+                with r2_col1:
+                    payment_method = st.selectbox(t["pay_method_label"], ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"], key=f"entry_method_{selected_unit_e}")
+                with r2_col2:
+                    amount = st.number_input(t["amount_received_label"], min_value=0.0, step=5.0, value=35.0, key=f"entry_amount_{selected_unit_e}")
+
+                start_m_idx = MONTH_NAMES.index(start_month_name) + 1
+                start_m = datetime(entry_year_val, start_m_idx, 1)
+
+                if st.button(t["submit_btn"], type="primary"):
+                    payment_payload = {
+                        "unit_id": selected_unit_e,
+                        "or_no": or_no,
+                        "collector_name": collector,
+                        "payment_method": payment_method,
+                        "amount_paid": amount,
+                        "start_month": start_m.strftime("%Y-%m-%d"),
+                        "end_month": start_m.strftime("%Y-%m-%d")
+                    }
+                    supabase.table("payments").insert(payment_payload).execute()
+                    st.success(t["payment_success"].format(amt=amount, month=start_month_name, year=entry_year_val, unit=selected_unit_e))
+                    st.rerun()
+
+        # Add horizontal divider
+        st.markdown("---")
+        # Multi-language section title
+        st.subheader(t["recent_entries_title"])
+
+        # 3-column control bar for filtering
+        ctl_c1, ctl_c2, ctl_c3 = st.columns([2, 1.2, 1.4])
+        
+        # 1. Search keyword input
+        with ctl_c1:
+            search_kw = st.text_input(
+                t["search_mgmt_label"],
+                placeholder=t["search_mgmt_placeholder"],
+                key=f"manage_search_kw_{lang}"
+            )
+            
+        # 2. Row limit dropdown
+        with ctl_c2:
+            limit_options = ["5", "10", "20", "50", "Semua" if lang == "ms" else "All"]
+            limit_choice = st.selectbox(
+                t["show_label"],
+                limit_options,
+                index=0,
+                key=f"manage_limit_choice_{lang}"
+            )
+            
+        # 3. Sorting order dropdown
+        with ctl_c3:
+            sort_opts = [t["opt_desc"], t["opt_asc"]]
+            sort_choice = st.selectbox(
+                t["sort_order_label"],
+                sort_opts,
+                index=0,
+                key=f"manage_sort_choice_{lang}"
+            )
+
+        # Determine sorting direction from choice
+        is_desc = True if sort_choice == t["opt_desc"] else False
+
+        # Query Supabase payments table
+        query_builder = supabase.table("payments").select("*").order("created_at", desc=is_desc)
+        all_mgmt_data = query_builder.execute().data or []
+
+        # Filter payment records based on search query
+        if search_kw.strip():
+            q_term = search_kw.strip().lower()
+            filtered_records = [
+                r for r in all_mgmt_data 
+                if q_term in str(r.get("or_no", "")).lower() 
+                or q_term in str(r.get("unit_id", "")).lower() 
+                or q_term in str(r.get("collector_name", "")).lower()
+            ]
+        else:
+            filtered_records = all_mgmt_data
+
+        # Apply row limit
+        if limit_choice not in ["Semua", "All"]:
+            display_records = filtered_records[:int(limit_choice)]
+        else:
+            display_records = filtered_records
+
+        # Summary record count
+        st.caption(t["showing_mgmt_caption"].format(shown=len(display_records), total=len(filtered_records)))
+
+        # Render interactive record cards
+        if display_records:
+            for idx, rec in enumerate(display_records):
+                r_unit = rec.get("unit_id", "-")
+                r_created_at = rec.get("created_at", "")
+                r_date = str(r_created_at)[:16].replace("T", " ")
+                r_or = rec.get("or_no", "-")
+                r_amt = float(rec.get("amount_paid", 0.0))
+                r_method = rec.get("payment_method", "CASH")
+                r_collector = rec.get("collector_name", "-")
                 
-                btn_c1, btn_c2 = st.columns([1, 1])
-                with btn_c1:
-                    if st.button(t["save_changes_btn"], key=f"btn_save_{idx}_{r_created_at}_{lang}", type="primary"):
-                        update_payment_entry(rec, new_or_val, new_col_val, new_meth_val, new_amt_val)
-                with btn_c2:
-                    if st.button(t["delete_record_btn"], key=f"btn_del_{idx}_{r_created_at}_{lang}"):
-                        delete_payment_entry(rec)
-    else:
-        st.info(t["no_mgmt_found"])
+                card_label = f"📍 {r_unit} | Resit: {r_or} | RM {r_amt:.2f} ({r_date})" if lang == "ms" else f"📍 {r_unit} | Receipt: {r_or} | RM {r_amt:.2f} ({r_date})"
+                with st.expander(card_label):
+                    edit_c1, edit_c2, edit_c3, edit_c4 = st.columns(4)
+                    with edit_c1:
+                        new_or_val = st.text_input(t["col_or_no"], value=r_or, key=f"edit_or_{idx}_{r_created_at}_{lang}")
+                    with edit_c2:
+                        methods = ["CASH", "Online Transfer", "DuitNow QR", "CHEQUE"]
+                        cur_idx = methods.index(r_method) if r_method in methods else 0
+                        new_meth_val = st.selectbox(t["pay_method_label"], methods, index=cur_idx, key=f"edit_meth_{idx}_{r_created_at}_{lang}")
+                    with edit_c3:
+                        new_amt_val = st.number_input(t["col_amount"], value=r_amt, step=5.0, key=f"edit_amt_{idx}_{r_created_at}_{lang}")
+                    with edit_c4:
+                        new_col_val = st.text_input(t["col_collector"], value=r_collector, key=f"edit_col_{idx}_{r_created_at}_{lang}")
+                    
+                    btn_c1, btn_c2 = st.columns([1, 1])
+                    with btn_c1:
+                        if st.button(t["save_changes_btn"], key=f"btn_save_{idx}_{r_created_at}_{lang}", type="primary"):
+                            update_payment_entry(rec, new_or_val, new_col_val, new_meth_val, new_amt_val)
+                    with btn_c2:
+                        if st.button(t["delete_record_btn"], key=f"btn_del_{idx}_{r_created_at}_{lang}"):
+                            delete_payment_entry(rec)
+        else:
+            st.info(t["no_mgmt_found"])
 
 # ==========================================
 # --- TAB 3: 📅 MONTHLY COLLECTION EXPORT ---
 # ==========================================
 with tab_monthly:
     st.header(t["tab3_header"])
-    if not verify_committee_access("tab3"):
-        st.stop()
-  
-    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-    with m_col1:
-        selected_month_num = st.selectbox(
-            t["select_month"], 
-            list(range(1, 13)), 
-            format_func=lambda x: datetime(2024, x, 1).strftime("%B") if lang == "en" else [
-                "Januari", "Februari", "Mac", "April", "Mei", "Jun", 
-                "Julai", "Ogos", "September", "Oktober", "November", "Disember"
-            ][x - 1], 
-            key="m_month"
-        )
-    with m_col2:
-        selected_year = st.selectbox(t["select_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(CURRENT_YEAR), key="m_year")
-    with m_col3:
-        sort_opts_m = [t["sort_opt_date"], t["sort_opt_receipt"], t["sort_opt_unit"], t["sort_opt_block"]]
-        sort_by_m = st.selectbox(t["sort_by"], sort_opts_m, key="m_sort")
-    with m_col4:
-        order_opts_m = [t["order_asc"], t["order_desc"]]
-        sort_order_m = st.selectbox(t["order_by"], order_opts_m, key="m_order")
+    if verify_committee_access("tab3"):
+        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+        with m_col1:
+            selected_month_num = st.selectbox(
+                t["select_month"], 
+                list(range(1, 13)), 
+                format_func=lambda x: datetime(CURRENT_YEAR, x, 1).strftime("%B") if lang == "en" else [
+                    "Januari", "Februari", "Mac", "April", "Mei", "Jun", 
+                    "Julai", "Ogos", "September", "Oktober", "November", "Disember"
+                ][x - 1], 
+                key="m_month"
+            )
+        with m_col2:
+            selected_year = st.selectbox(t["select_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(CURRENT_YEAR), key="m_year")
+        with m_col3:
+            sort_opts_m = [t["sort_opt_date"], t["sort_opt_receipt"], t["sort_opt_unit"], t["sort_opt_block"]]
+            sort_by_m = st.selectbox(t["sort_by"], sort_opts_m, key="m_sort")
+        with m_col4:
+            order_opts_m = [t["order_asc"], t["order_desc"]]
+            sort_order_m = st.selectbox(t["order_by"], order_opts_m, key="m_order")
 
-    m_start_str = f"{selected_year}-{selected_month_num:02d}-01"
-    next_m = datetime(selected_year, selected_month_num, 1) + relativedelta(months=1)
-    m_end_str = next_m.strftime("%Y-%m-%d")
+        m_start_str = f"{selected_year}-{selected_month_num:02d}-01"
+        next_m = datetime(selected_year, selected_month_num, 1) + relativedelta(months=1)
+        m_end_str = next_m.strftime("%Y-%m-%d")
 
-    records = supabase.table("payments").select("*").gte("created_at", m_start_str).lt("created_at", m_end_str).execute().data
-    
-    display_month_name = datetime(2024, selected_month_num, 1).strftime("%B") if lang == "en" else [
-        "Januari", "Februari", "Mac", "April", "Mei", "Jun", 
-        "Julai", "Ogos", "September", "Oktober", "November", "Disember"
-    ][selected_month_num - 1]
+        records = supabase.table("payments").select("*").gte("created_at", m_start_str).lt("created_at", m_end_str).execute().data
+        
+        display_month_name = datetime(CURRENT_YEAR, selected_month_num, 1).strftime("%B") if lang == "en" else [
+            "Januari", "Februari", "Mac", "April", "Mei", "Jun", 
+            "Julai", "Ogos", "September", "Oktober", "November", "Disember"
+        ][selected_month_num - 1]
 
-    if len(records) == 0:
-        st.info(t["no_monthly_records"].format(month=display_month_name, year=selected_year))
-    else:
-        st.write(t["found_logs"].format(count=len(records)))
-        df_logs = pd.DataFrame(records)[["created_at", "or_no", "unit_id", "collector_name", "payment_method", "amount_paid", "start_month", "end_month"]]
-        df_logs["Block"] = df_logs["unit_id"].apply(lambda x: x.split("-")[0] if "-" in str(x) else "")
-        
-        sort_map = {
-            t["sort_opt_date"]: "created_at",
-            t["sort_opt_receipt"]: "or_no",
-            t["sort_opt_unit"]: "unit_id",
-            t["sort_opt_block"]: "Block"
-        }
-        
-        is_asc = True if sort_order_m == t["order_asc"] else False
-        df_logs = df_logs.sort_values(by=sort_map[sort_by_m], ascending=is_asc)
-        
-        df_logs_display = df_logs.drop(columns=["Block"]).copy()
-        df_logs_display.columns = [
-            t["col_logged_date"], t["col_or_no"], "Unit ID", 
-            t["col_collector"], t["col_method"], t["col_amount"], 
-            t["col_start"], t["col_end"]
-        ]
-        
-        df_logs_display[t["col_logged_date"]] = pd.to_datetime(df_logs_display[t["col_logged_date"]]).dt.strftime("%Y-%m-%d %H:%M")
-        df_logs_display[t["col_amount"]] = df_logs_display[t["col_amount"]].apply(lambda x: f"RM {float(x):.2f}")
-        
-        st.dataframe(df_logs_display, use_container_width=True)
-        
-        sorted_records = df_logs.to_dict("records")
-        excel_file = generate_monthly_excel(sorted_records, display_month_name, selected_year)
-        
-        st.download_button(
-            label=t["dl_monthly_btn"].format(month=display_month_name, year=selected_year),
-            data=excel_file,
-            file_name=f"Collection_Log_{display_month_name}_{selected_year}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        if len(records) == 0:
+            st.info(t["no_monthly_records"].format(month=display_month_name, year=selected_year))
+        else:
+            st.write(t["found_logs"].format(count=len(records)))
+            df_logs = pd.DataFrame(records)[["created_at", "or_no", "unit_id", "collector_name", "payment_method", "amount_paid", "start_month", "end_month"]]
+            df_logs["Block"] = df_logs["unit_id"].apply(lambda x: x.split("-")[0] if "-" in str(x) else "")
+            
+            sort_map = {
+                t["sort_opt_date"]: "created_at",
+                t["sort_opt_receipt"]: "or_no",
+                t["sort_opt_unit"]: "unit_id",
+                t["sort_opt_block"]: "Block"
+            }
+            
+            is_asc = True if sort_order_m == t["order_asc"] else False
+            df_logs = df_logs.sort_values(by=sort_map[sort_by_m], ascending=is_asc)
+            
+            df_logs_display = df_logs.drop(columns=["Block"]).copy()
+            df_logs_display.columns = [
+                t["col_logged_date"], t["col_or_no"], "Unit ID", 
+                t["col_collector"], t["col_method"], t["col_amount"], 
+                t["col_start"], t["col_end"]
+            ]
+            
+            df_logs_display[t["col_logged_date"]] = pd.to_datetime(df_logs_display[t["col_logged_date"]]).dt.strftime("%Y-%m-%d %H:%M")
+            df_logs_display[t["col_amount"]] = df_logs_display[t["col_amount"]].apply(lambda x: f"RM {float(x):.2f}")
+            
+            st.dataframe(df_logs_display, use_container_width=True)
+            
+            sorted_records = df_logs.to_dict("records")
+            excel_file = generate_monthly_excel(sorted_records, display_month_name, selected_year)
+            
+            st.download_button(
+                label=t["dl_monthly_btn"].format(month=display_month_name, year=selected_year),
+                data=excel_file,
+                file_name=f"Collection_Log_{display_month_name}_{selected_year}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
 # ==========================================
 # --- TAB 4: 📊 ANNUAL PAYMENT SUMMARY ---
 # ==========================================
 with tab_annual:
     st.header(t["tab4_header"])
-    if not verify_committee_access("tab4"):
-        st.stop()
+    if verify_committee_access("tab4"):
+        f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 1.5, 1.5, 1.5])
+        with f_col1:
+            ann_year = st.selectbox(t["view_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(CURRENT_YEAR), key="annual_year")
+        with f_col2:
+            block_options = [t["all_blocks"], "Block S1", "Block S2", "Block S3"]
+            block_filter = st.selectbox(t["filter_block"], block_options, key="ann_block_filter")
+        with f_col3:
+            search_query = st.text_input(t["search_unit"], placeholder=t["search_placeholder"], key="ann_search")
+        with f_col4:
+            sort_opts_a = [t["sort_opt_unit"], t["sort_opt_floor"], t["sort_opt_out"], t["sort_opt_total"]]
+            sort_by_a = st.selectbox(t["sort_by"], sort_opts_a, key="ann_sort")
+        with f_col5:
+            order_opts_a = [t["order_asc"], t["order_desc"]]
+            sort_order_a = st.selectbox(t["order_by"], order_opts_a, key="ann_order")
         
-    f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 1.5, 1.5, 1.5])
-    with f_col1:
-        ann_year = st.selectbox(t["view_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(CURRENT_YEAR), key="annual_year")
-    with f_col2:
-        block_options = [t["all_blocks"], "Block S1", "Block S2", "Block S3"]
-        block_filter = st.selectbox(t["filter_block"], block_options, key="ann_block_filter")
-    with f_col3:
-        search_query = st.text_input(t["search_unit"], placeholder=t["search_placeholder"], key="ann_search")
-    with f_col4:
-        sort_opts_a = [t["sort_opt_unit"], t["sort_opt_floor"], t["sort_opt_out"], t["sort_opt_total"]]
-        sort_by_a = st.selectbox(t["sort_by"], sort_opts_a, key="ann_sort")
-    with f_col5:
-        order_opts_a = [t["order_asc"], t["order_desc"]]
-        sort_order_a = st.selectbox(t["order_by"], order_opts_a, key="ann_order")
-    
-    all_units = supabase.table("units").select("unit_id", "block", "floor_level").execute().data
-    all_payments = supabase.table("payments").select("*").execute().data
-    
-    unit_payment_map = {}
-    for p in all_payments:
-        u = p["unit_id"]
-        if u not in unit_payment_map:
-            unit_payment_map[u] = []
-        unit_payment_map[u].append(p)
-            
-    months_list = [datetime(ann_year, m, 1) for m in range(1, 13)]
-    matrix_data = []
-    
-    for u_obj in all_units:
-        u_id = u_obj["unit_id"]
-        row = {
-            "Unit ID": u_id,
-            "Block": u_obj["block"],
-            "Floor": u_obj["floor_level"]
-        }
+        all_units = supabase.table("units").select("unit_id", "block", "floor_level").execute().data
+        all_payments = supabase.table("payments").select("*").execute().data
         
-        u_records = unit_payment_map.get(u_id, [])
-        u_balances = calculate_monthly_balances(u_records, ann_year)
-        
-        unit_total_paid = 0.0
-        for m_date in months_list:
-            m_str = m_date.strftime("%Y-%m")
-            bal = u_balances.get(m_str, 0.0)
-            unit_total_paid += bal
-            
-            if bal >= MONTHLY_FEE:
-                row[m_date.strftime("%b")] = "PAID"
-            elif bal > 0.0:
-                row[m_date.strftime("%b")] = f"PARTIAL (RM{bal:.2f})"
-            else:
-                row[m_date.strftime("%b")] = "UNPAID"
+        unit_payment_map = {}
+        for p in all_payments:
+            u = p["unit_id"]
+            if u not in unit_payment_map:
+                unit_payment_map[u] = []
+            unit_payment_map[u].append(p)
                 
-        unit_outstanding = max(0.0, ANNUAL_EXPECTED_FEE - unit_total_paid)
-        row["Total Paid (RM)"] = round(unit_total_paid, 2)
-        row["Outstanding (RM)"] = round(unit_outstanding, 2)
-        matrix_data.append(row)
+        months_list = [datetime(ann_year, m, 1) for m in range(1, 13)]
+        matrix_data = []
         
-    df_matrix = pd.DataFrame(matrix_data)
-    
-    if block_filter == "Block S1":
-        df_matrix = df_matrix[df_matrix["Block"] == "S1"]
-    elif block_filter == "Block S2":
-        df_matrix = df_matrix[df_matrix["Block"] == "S2"]
-    elif block_filter == "Block S3":
-        df_matrix = df_matrix[df_matrix["Block"] == "S3"]
-
-    if search_query.strip():
-        q = search_query.strip().lower()
-        df_matrix = df_matrix[df_matrix["Unit ID"].str.lower().str.contains(q)]
-
-    is_asc_a = True if sort_order_a == t["order_asc"] else False
-    if sort_by_a == t["sort_opt_floor"]:
-        df_matrix = df_matrix.sort_values(by=["Floor", "Unit ID"], ascending=[is_asc_a, True])
-    elif sort_by_a == t["sort_opt_out"]:
-        df_matrix = df_matrix.sort_values(by=["Outstanding (RM)", "Unit ID"], ascending=[is_asc_a, True])
-    elif sort_by_a == t["sort_opt_total"]:
-        df_matrix = df_matrix.sort_values(by=["Total Paid (RM)", "Unit ID"], ascending=[is_asc_a, True])
-    else:
-        df_matrix = df_matrix.sort_values(by="Unit ID", ascending=is_asc_a)
+        for u_obj in all_units:
+            u_id = u_obj["unit_id"]
+            row = {
+                "Unit ID": u_id,
+                "Block": u_obj["block"],
+                "Floor": u_obj["floor_level"]
+            }
+            
+            u_records = unit_payment_map.get(u_id, [])
+            u_balances = calculate_monthly_balances(u_records, ann_year)
+            
+            unit_total_paid = 0.0
+            for m_date in months_list:
+                m_str = m_date.strftime("%Y-%m")
+                bal = u_balances.get(m_str, 0.0)
+                unit_total_paid += bal
+                
+                if bal >= MONTHLY_FEE:
+                    row[m_date.strftime("%b")] = "PAID"
+                elif bal > 0.0:
+                    row[m_date.strftime("%b")] = f"PARTIAL (RM{bal:.2f})"
+                else:
+                    row[m_date.strftime("%b")] = "UNPAID"
+                    
+            unit_outstanding = max(0.0, ANNUAL_EXPECTED_FEE - unit_total_paid)
+            row["Total Paid (RM)"] = round(unit_total_paid, 2)
+            row["Outstanding (RM)"] = round(unit_outstanding, 2)
+            matrix_data.append(row)
+            
+        df_matrix = pd.DataFrame(matrix_data)
         
-    st.caption(t["showing_units_msg"].format(count=len(df_matrix), year=ann_year))
-    df_display = df_matrix.drop(columns=["Block", "Floor"])
-    st.dataframe(df_display, use_container_width=True, height=400)
-    
-    ann_excel = generate_annual_excel(df_display, ann_year)
-    filter_label = block_filter.replace(" ", "_") if block_filter != t["all_blocks"] else "All_Blocks"
-    st.download_button(
-        label=t["dl_annual_btn"].format(block=block_filter, year=ann_year),
-        data=ann_excel,
-        file_name=f"Maintenance_Fee_Summary_{ann_year}_{filter_label}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        if block_filter == "Block S1":
+            df_matrix = df_matrix[df_matrix["Block"] == "S1"]
+        elif block_filter == "Block S2":
+            df_matrix = df_matrix[df_matrix["Block"] == "S2"]
+        elif block_filter == "Block S3":
+            df_matrix = df_matrix[df_matrix["Block"] == "S3"]
+
+        if search_query.strip():
+            q = search_query.strip().lower()
+            df_matrix = df_matrix[df_matrix["Unit ID"].str.lower().str.contains(q)]
+
+        is_asc_a = True if sort_order_a == t["order_asc"] else False
+        if sort_by_a == t["sort_opt_floor"]:
+            df_matrix = df_matrix.sort_values(by=["Floor", "Unit ID"], ascending=[is_asc_a, True])
+        elif sort_by_a == t["sort_opt_out"]:
+            df_matrix = df_matrix.sort_values(by=["Outstanding (RM)", "Unit ID"], ascending=[is_asc_a, True])
+        elif sort_by_a == t["sort_opt_total"]:
+            df_matrix = df_matrix.sort_values(by=["Total Paid (RM)", "Unit ID"], ascending=[is_asc_a, True])
+        else:
+            df_matrix = df_matrix.sort_values(by="Unit ID", ascending=is_asc_a)
+            
+        st.caption(t["showing_units_msg"].format(count=len(df_matrix), year=ann_year))
+        df_display = df_matrix.drop(columns=["Block", "Floor"])
+        st.dataframe(df_display, use_container_width=True, height=400)
+        
+        ann_excel = generate_annual_excel(df_display, ann_year)
+        filter_label = block_filter.replace(" ", "_") if block_filter != t["all_blocks"] else "All_Blocks"
+        st.download_button(
+            label=t["dl_annual_btn"].format(block=block_filter, year=ann_year),
+            data=ann_excel,
+            file_name=f"Maintenance_Fee_Summary_{ann_year}_{filter_label}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
