@@ -65,7 +65,7 @@ TRANSLATIONS = {
         "unlock_btn": "🔓 Unlock Access",
         "lock_logout_btn": "🔒 Lock / Log Out",
         "pin_success": "✅ PIN Verified! Unlocking access...",
-        "pin_error": "❌ Incorrect PIN. Please contact the management committee."
+        "pin_error": "❌ Incorrect PIN. Please contact the management committee.",
         
         # Tab 1
         "tab1_header": "🔍 Check Unit Payment Status",
