@@ -157,7 +157,7 @@ TRANSLATIONS = {
         "unlock_btn": "🔓 Buka Kunci Akses",
         "lock_logout_btn": "🔒 Kunci / Log Keluar",
         "pin_success": "✅ PIN Sah! Membuka akses...",
-        "pin_error": "❌ PIN tidak sah. Sila hubungi pihak pengurusan."
+        "pin_error": "❌ PIN tidak sah. Sila hubungi pihak pengurusan.",
         
         # Tab 1
         "tab1_header": "🔍 Semak Status Bayaran Unit",
