@@ -516,34 +516,47 @@ def get_unpaid_months_for_year(unit_id, target_year):
             available_months.append(MONTH_NAMES[m - 1])
     return available_months
 
-def verify_committee_access(tab_key="entry"):
-    # If already logged in, show a quick logout button and allow access
+# Helper function to gate committee access using PIN authentication
+def verify_committee_access(tab_name_key):
+    # Check if committee session state is already authenticated
     if st.session_state.get("committee_authenticated", False):
-        top_logout_col1, top_logout_col2 = st.columns([5, 1.2])
-        with top_logout_col2:
-            if st.button(t["lock_logout_btn"], key=f"btn_logout_{tab_key}"):
+        # Create columns to align logout button to the far right
+        col_status, col_btn = st.columns([5, 1.2])
+        with col_btn:
+            # Render button to lock admin access
+            if st.button("🔒 " + ("Kunci Semula" if lang == "ms" else "Lock / Log Out"), key=f"btn_logout_{tab_name_key}", use_container_width=True):
+                # Reset session authentication state
                 st.session_state["committee_authenticated"] = False
+                # Reload application state
                 st.rerun()
         return True
 
-    # If not logged in, prompt for PIN
-    st.warning(t["lock_warning"])
-    pin_col1, pin_col2 = st.columns([2, 1])
+    # Display restriction warning notice
+    st.warning("🔒 " + ("Bahagian ini terhad untuk Ahli Jawatankuasa (AJK) sahaja." if lang == "ms" else "This section is restricted to resident committee members."))
+    
+    # Create two columns with bottom vertical alignment for perfect button height matching
+    pin_col1, pin_col2 = st.columns([3, 1], vertical_alignment="bottom")
     with pin_col1:
+        # Render password text input field
         pin_input = st.text_input(
-            t["pin_placeholder"], 
+            "Masukkan PIN AJK" if lang == "ms" else "Enter Committee PIN to Unlock", 
             type="password", 
-            key=f"auth_pin_input_{tab_key}"
+            key=f"auth_pin_input_{tab_name_key}_{lang}"
         )
     with pin_col2:
-        st.write("")  # Vertical spacing alignment
-        if st.button(t["unlock_btn"], type="primary", key=f"btn_unlock_pin_{tab_key}"):
-            if pin_input == COMMITTEE_PIN:
+        # Render unlock button perfectly aligned with the text input box
+        if st.button("🔓 " + ("Buka Kunci" if lang == "ms" else "Unlock Access"), type="primary", key=f"btn_unlock_pin_{tab_name_key}_{lang}", use_container_width=True):
+            # Validate input PIN against secret configuration
+            if pin_input.strip() == COMMITTEE_PIN.strip():
+                # Set authentication state to True
                 st.session_state["committee_authenticated"] = True
-                st.success(t["pin_success"])
+                # Display success notification
+                st.success("✅ " + ("PIN Sah! Membuka akses..." if lang == "ms" else "PIN Verified! Unlocking access..."))
+                # Reload application state
                 st.rerun()
             else:
-                st.error(t["pin_error"])
+                # Display error alert on invalid PIN entry
+                st.error("❌ " + ("PIN salah. Sila hubungi pihak pengurusan." if lang == "ms" else "Incorrect PIN. Please contact the management committee."))
                 
     return False
 
@@ -660,9 +673,6 @@ with tab_entry:
     st.header(t["tab2_header"])
     if not verify_committee_access("tab2"):
         st.stop()
-
-with tab_entry:
-    st.header(t["tab2_header"])
     
     # Committee collector and unit selection
     e_col1, e_col2, e_col3, e_col4 = st.columns(4)
@@ -836,9 +846,6 @@ with tab_monthly:
     st.header(t["tab3_header"])
     if not verify_committee_access("tab3"):
         st.stop()
-
-with tab_monthly:
-    st.header(t["tab3_header"])
     
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     with m_col1:
@@ -918,9 +925,6 @@ with tab_annual:
     if not verify_committee_access("tab4"):
         st.stop()
         
-with tab_annual:
-    st.header(t["tab4_header"])
-    
     f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 1.5, 1.5, 1.5])
     with f_col1:
         ann_year = st.selectbox(t["view_year"], YEAR_OPTIONS, index=YEAR_OPTIONS.index(CURRENT_YEAR), key="annual_year")
