@@ -539,30 +539,35 @@ def verify_committee_access(tab_name_key):
     # Centered PIN card layout
     spacer_left, center_col, spacer_right = st.columns([1, 1.2, 1])
     with center_col:
-        # Display restriction warning notice inside the card
-        st.warning(t["lock_warning"])
-        
-        # Centered password input field
-        pin_input = st.text_input(
-            t["pin_placeholder"], 
-            type="password", 
-            key=f"auth_pin_input_{tab_name_key}_{lang}"
-        )
-        
-        # Centered unlock button placed directly underneath the input box
-        if st.button(t["unlock_btn"], type="primary", key=f"btn_unlock_pin_{tab_name_key}_{lang}", use_container_width=True):
-            # Validate input PIN against secret configuration
-            if pin_input.strip() == COMMITTEE_PIN.strip():
-                # Shared global state: Unlocks Tabs 2, 3, and 4 simultaneously
-                st.session_state["committee_authenticated"] = True
-                # Display success message
-                st.success(t["pin_success"])
-                # Rerun application to render unlocked content
-                st.rerun()
-            else:
-                # Display error alert on invalid PIN entry
-                st.error(t["pin_error"])
-                
+        # Form container links keyboard Enter key directly to the submit button
+        with st.form(key=f"pin_form_{tab_name_key}_{lang}", border=False):
+            # Display restriction warning notice inside the card
+            st.warning(t["lock_warning"])
+            
+            # Centered password input field
+            pin_input = st.text_input(
+                t["pin_placeholder"], 
+                type="password", 
+                key=f"auth_pin_input_{tab_name_key}_{lang}"
+            )
+            
+            # Form submission button triggers on click OR on pressing Enter
+            submitted = st.form_submit_button(t["unlock_btn"], type="primary", use_container_width=True)
+            
+            # Process PIN verification upon submission
+            if submitted:
+                # Validate input PIN against secret configuration
+                if pin_input.strip() == COMMITTEE_PIN.strip():
+                    # Shared global state: Unlocks Tabs 2, 3, and 4 simultaneously
+                    st.session_state["committee_authenticated"] = True
+                    # Display success message
+                    st.success(t["pin_success"])
+                    # Rerun application to render unlocked content
+                    st.rerun()
+                else:
+                    # Display error alert on invalid PIN entry
+                    st.error(t["pin_error"])
+                    
     return False
 
 # ==========================================
