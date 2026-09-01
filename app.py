@@ -27,6 +27,13 @@ SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 # Instantiate connection client to Supabase database
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Retrieve Committee PIN from secrets (fallback default 8899)
+COMMITTEE_PIN = str(st.secrets.get("COMMITTEE_PIN", "8899"))
+
+# Initialize session state for committee login
+if "committee_authenticated" not in st.session_state:
+    st.session_state["committee_authenticated"] = False
+
 # Set page configuration for wide screen layout
 st.set_page_config(page_title="Sunway Sinar Maintenance Portal", layout="wide")
 
@@ -53,6 +60,12 @@ TRANSLATIONS = {
         "tab2_title": "📝 Record Payment",
         "tab3_title": "📅 Monthly Collection",
         "tab4_title": "📊 Annual Summary",
+        "lock_warning": "🔒 This section is restricted to resident committee members.",
+        "pin_placeholder": "Enter Committee PIN to Unlock",
+        "unlock_btn": "🔓 Unlock Access",
+        "lock_logout_btn": "🔒 Lock / Log Out",
+        "pin_success": "✅ PIN Verified! Unlocking access...",
+        "pin_error": "❌ Incorrect PIN. Please contact the management committee."
         
         # Tab 1
         "tab1_header": "🔍 Check Unit Payment Status",
@@ -139,6 +152,12 @@ TRANSLATIONS = {
         "tab2_title": "📝 Rekod Bayaran",
         "tab3_title": "📅 Kutipan Bulanan",
         "tab4_title": "📊 Ringkasan Tahunan",
+        "lock_warning": "🔒 Bahagian ini dikhaskan untuk Ahli Jawatankuasa (AJK) sahaja.",
+        "pin_placeholder": "Masukkan PIN AJK untuk Akses",
+        "unlock_btn": "🔓 Buka Kunci Akses",
+        "lock_logout_btn": "🔒 Kunci / Log Keluar",
+        "pin_success": "✅ PIN Sah! Membuka akses...",
+        "pin_error": "❌ PIN tidak sah. Sila hubungi pihak pengurusan."
         
         # Tab 1
         "tab1_header": "🔍 Semak Status Bayaran Unit",
@@ -497,6 +516,37 @@ def get_unpaid_months_for_year(unit_id, target_year):
             available_months.append(MONTH_NAMES[m - 1])
     return available_months
 
+def verify_committee_access(tab_key="entry"):
+    # If already logged in, show a quick logout button and allow access
+    if st.session_state.get("committee_authenticated", False):
+        top_logout_col1, top_logout_col2 = st.columns([5, 1.2])
+        with top_logout_col2:
+            if st.button(t["lock_logout_btn"], key=f"btn_logout_{tab_key}"):
+                st.session_state["committee_authenticated"] = False
+                st.rerun()
+        return True
+
+    # If not logged in, prompt for PIN
+    st.warning(t["lock_warning"])
+    pin_col1, pin_col2 = st.columns([2, 1])
+    with pin_col1:
+        pin_input = st.text_input(
+            t["pin_placeholder"], 
+            type="password", 
+            key=f"auth_pin_input_{tab_key}"
+        )
+    with pin_col2:
+        st.write("")  # Vertical spacing alignment
+        if st.button(t["unlock_btn"], type="primary", key=f"btn_unlock_pin_{tab_key}"):
+            if pin_input == COMMITTEE_PIN:
+                st.session_state["committee_authenticated"] = True
+                st.success(t["pin_success"])
+                st.rerun()
+            else:
+                st.error(t["pin_error"])
+                
+    return False
+
 # ==========================================
 # 3. FOUR INTERFACE TABS
 # ==========================================
@@ -606,6 +656,11 @@ with tab_status:
 # ==========================================
 # --- TAB 2: 📝 RECORD PAYMENT (COMMITTEE ENTRY) ---
 # ==========================================
+with tab_entry:
+    st.header(t["tab2_header"])
+    if not verify_committee_access("tab2"):
+        st.stop()
+
 with tab_entry:
     st.header(t["tab2_header"])
     
@@ -779,6 +834,11 @@ with tab_entry:
 # ==========================================
 with tab_monthly:
     st.header(t["tab3_header"])
+    if not verify_committee_access("tab3"):
+        st.stop()
+
+with tab_monthly:
+    st.header(t["tab3_header"])
     
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     with m_col1:
@@ -853,6 +913,11 @@ with tab_monthly:
 # ==========================================
 # --- TAB 4: 📊 ANNUAL PAYMENT SUMMARY ---
 # ==========================================
+with tab_annual:
+    st.header(t["tab4_header"])
+    if not verify_committee_access("tab4"):
+        st.stop()
+        
 with tab_annual:
     st.header(t["tab4_header"])
     
