@@ -520,39 +520,39 @@ def get_unpaid_months_for_year(unit_id, target_year):
 def verify_committee_access(tab_name_key):
     # Check if committee session state is already authenticated
     if st.session_state.get("committee_authenticated", False):
-        # Create columns to align logout button to the far right
+        # Create columns to position the lock button on the right
         col_status, col_btn = st.columns([5, 1.2])
         with col_btn:
-            # Render button to lock admin access
+            # Button to lock all admin tabs immediately
             if st.button("🔒 " + ("Kunci Semula" if lang == "ms" else "Lock / Log Out"), key=f"btn_logout_{tab_name_key}", use_container_width=True):
-                # Reset session authentication state
+                # Reset global session authentication state
                 st.session_state["committee_authenticated"] = False
-                # Reload application state
+                # Refresh page to apply lock across all tabs
                 st.rerun()
         return True
 
     # Display restriction warning notice
     st.warning("🔒 " + ("Bahagian ini terhad untuk Ahli Jawatankuasa (AJK) sahaja." if lang == "ms" else "This section is restricted to resident committee members."))
     
-    # Create two columns with bottom vertical alignment for perfect button height matching
-    pin_col1, pin_col2 = st.columns([3, 1], vertical_alignment="bottom")
+    # Compact column layout to prevent oversized inputs on widescreen
+    pin_col1, pin_col2, _ = st.columns([1.2, 0.7, 2.1], vertical_alignment="bottom")
     with pin_col1:
-        # Render password text input field
+        # Compact PIN input field
         pin_input = st.text_input(
             "Masukkan PIN AJK" if lang == "ms" else "Enter Committee PIN to Unlock", 
             type="password", 
             key=f"auth_pin_input_{tab_name_key}_{lang}"
         )
     with pin_col2:
-        # Render unlock button perfectly aligned with the text input box
+        # Compact unlock button aligned with text input box
         if st.button("🔓 " + ("Buka Kunci" if lang == "ms" else "Unlock Access"), type="primary", key=f"btn_unlock_pin_{tab_name_key}_{lang}", use_container_width=True):
             # Validate input PIN against secret configuration
             if pin_input.strip() == COMMITTEE_PIN.strip():
-                # Set authentication state to True
+                # Set global session state to True (unlocks Tabs 2, 3, and 4 simultaneously)
                 st.session_state["committee_authenticated"] = True
-                # Display success notification
+                # Display success message
                 st.success("✅ " + ("PIN Sah! Membuka akses..." if lang == "ms" else "PIN Verified! Unlocking access..."))
-                # Reload application state
+                # Rerun application to render unlocked content
                 st.rerun()
             else:
                 # Display error alert on invalid PIN entry
@@ -846,7 +846,7 @@ with tab_monthly:
     st.header(t["tab3_header"])
     if not verify_committee_access("tab3"):
         st.stop()
-    
+  
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     with m_col1:
         selected_month_num = st.selectbox(
