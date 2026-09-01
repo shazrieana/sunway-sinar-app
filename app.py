@@ -520,8 +520,9 @@ def get_unpaid_months_for_year(unit_id, target_year):
 def verify_committee_access(tab_name_key):
     # Check if committee session state is already authenticated
     if st.session_state.get("committee_authenticated", False):
-        # Create columns to position the lock button on the right
+        # Create columns to position the lock button on the far right
         col_status, col_btn = st.columns([5, 1.2])
+        # Column for lock button
         with col_btn:
             # Button to lock all admin tabs immediately
             if st.button("🔒 " + ("Kunci Semula" if lang == "ms" else "Lock / Log Out"), key=f"btn_logout_{tab_name_key}", use_container_width=True):
@@ -531,20 +532,22 @@ def verify_committee_access(tab_name_key):
                 st.rerun()
         return True
 
-    # Display restriction warning notice
-    st.warning("🔒 " + ("Bahagian ini terhad untuk Ahli Jawatankuasa (AJK) sahaja." if lang == "ms" else "This section is restricted to resident committee members."))
+    # Centered 3-column layout (Left spacer, Center card, Right spacer)
+    spacer_left, center_col, spacer_right = st.columns([1, 1.2, 1])
     
-    # Compact column layout to prevent oversized inputs on widescreen
-    pin_col1, pin_col2, _ = st.columns([1.2, 0.7, 2.1], vertical_alignment="bottom")
-    with pin_col1:
-        # Compact PIN input field
+    # Place all lock elements neatly in the center column
+    with center_col:
+        # Display restriction warning notice inside the card
+        st.warning("🔒 " + ("Bahagian ini terhad untuk Ahli Jawatankuasa (AJK) sahaja." if lang == "ms" else "This section is restricted to resident committee members."))
+        
+        # Centered password input field
         pin_input = st.text_input(
             "Masukkan PIN AJK" if lang == "ms" else "Enter Committee PIN to Unlock", 
             type="password", 
             key=f"auth_pin_input_{tab_name_key}_{lang}"
         )
-    with pin_col2:
-        # Compact unlock button aligned with text input box
+        
+        # Centered unlock button placed directly underneath the input box
         if st.button("🔓 " + ("Buka Kunci" if lang == "ms" else "Unlock Access"), type="primary", key=f"btn_unlock_pin_{tab_name_key}_{lang}", use_container_width=True):
             # Validate input PIN against secret configuration
             if pin_input.strip() == COMMITTEE_PIN.strip():
