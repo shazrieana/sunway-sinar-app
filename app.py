@@ -524,7 +524,7 @@ def get_unpaid_months_for_year(unit_id, target_year):
 # Helper function to gate committee access using PIN authentication
 def verify_committee_access(tab_name_key):
     # Place return True here to bypass the entire lock screen immediately
-    return True
+    #return True
     # Check if committee session state is already authenticated
     if st.session_state.get("committee_authenticated", False):
         # Position logout button in top-right corner
